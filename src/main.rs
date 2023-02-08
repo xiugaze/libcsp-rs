@@ -1,38 +1,72 @@
-
+#![deny(unsafe_code)]
 #![no_main]
 #![no_std]
+#![allow(unused_imports)]
 
-use panic_semihosting as _;
+use panic_rtt_target as _panic_handler;
+use rtic::app;
 
-#[rtic::app(device = stm32f4::stm32f446, peripherals = true)]
+#[app(device = stm32f4xx_hal::pac, peripherals = true, dispatchers = [SPI1])]
 mod app {
-    use cortex_m_semihosting::{debug, hprintln};
+    use core::sync::atomic::{AtomicUsize, Ordering};
+    use rtt_target::{rprintln, rtt_init_print};
+    use stm32f4xx_hal::{
+        gpio::{gpioa::PA0, gpioc::PC6, Alternate, Edge, Input, Output, Pin, PushPull},
+        prelude::*,
+    };
+    use systick_monotonic::{fugit::Duration, Systick};
+
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
     #[shared]
     struct Shared {}
 
     #[local]
-    struct Local {}
+    struct Local {
+        led: Pin<'C', 12, Output<PushPull>>,
+        pin: Pin<'A', 0, Input>,
+    }
 
-    #[init(local = [x: u32 = 0])]
-    fn init(cx: init::Context) -> (Shared, Local, init::Monotonics) {
-        // Cortex-M peripherals
-        let _core: cortex_m::Peripherals = cx.core;
+    #[monotonic(binds = SysTick, default = true)]
+    type Tonic = Systick<1000>;
 
-        // Device specific peripherals
-        let _device: stm32f4::stm32f446::Peripherals = cx.device;
+    #[init]
+    fn init(mut ctx: init::Context) -> (Shared, Local, init::Monotonics) {
+        rtt_init_print!();
+        rprintln!("init");
 
-        // Locals in `init` have 'static lifetime
-        let _x: &'static mut u32 = cx.local.x;
+        let rcc = ctx.device.RCC.constrain();
+        let _clocks = rcc.cfgr.sysclk(48.MHz()).freeze();
 
-        // Access to the critical section token,
-        // to indicate that this is a critical seciton
-        let _cs_token: bare_metal::CriticalSection = cx.cs;
+        let gpioc = ctx.device.GPIOC.split();
+        let led = gpioc.pc12.into_push_pull_output();
 
-        hprintln!("init");
+        let gpioa = ctx.device.GPIOA.split();
+        let mut pin = gpioa.pa0.into_pull_down_input();
+        let mut sys_cfg = ctx.device.SYSCFG.constrain();
+        pin.make_interrupt_source(&mut sys_cfg);
+        pin.enable_interrupt(&mut ctx.device.EXTI);
+        pin.trigger_on_edge(&mut ctx.device.EXTI, Edge::Falling);
 
-        //debug::exit(debug::EXIT_SUCCESS); // Exit QEMU simulator
+        let mono = Systick::new(ctx.core.SYST, 48_000_000);
 
-        (Shared {}, Local {}, init::Monotonics())
+        blink::spawn().ok();
+
+        (Shared {}, Local { pin, led }, init::Monotonics(mono))
+    }
+
+    #[task(local = [led], priority = 4)]
+    fn blink(ctx: blink::Context) {
+        let count = COUNTER.swap(0, Ordering::SeqCst);
+        rprintln!("{}", count);
+        ctx.local.led.toggle();
+        blink::spawn_after(Duration::<u64, 1, 1000>::from_ticks(1000)).ok();
+    }
+
+    #[task(binds = EXTI0, local = [pin])]
+    fn on_exti(ctx: on_exti::Context) {
+        ctx.local.pin.clear_interrupt_pending_bit();
+        rprintln!("incrementing");
+        COUNTER.fetch_add(1, Ordering::SeqCst);
     }
 }
