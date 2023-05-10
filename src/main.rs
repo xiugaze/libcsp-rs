@@ -1,20 +1,21 @@
-use std::net::{TcpListener, TcpStream};
-use std::io::{Read, Write, Error};
+use std::net::UdpSocket;
 
-pub mod csp;
+
+
+//pub mod csp;
+pub mod utils;
 
 fn main() {
-    let mut stream = TcpStream::connect("127.0.0.1:10").unwrap();
+    let mut socket = UdpSocket::bind("127.0.0.1:8080").unwrap();
 
-    let mut buffer = [0; 1024];
+    let mut buf = [0; 1024];
+
     loop {
-        let bytes_read = stream.read(&mut buffer).unwrap();
-        if bytes_read == 0 {
-            break;
-        }
-    }
-    for (i, b) in buffer.iter().enumerate() {
-        println!("idx: {:?} = {:?}", i, b);
+        let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
+        //let message = String::from_utf8_lossy(&buf[..len]);
+
+        println!("Message from {src_addr}: ");
+        utils::dump_buffer(&buf, len);
     }
 }
 
