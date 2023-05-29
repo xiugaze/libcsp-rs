@@ -3,15 +3,52 @@
 // TODO: For unimplemented!()
 #![allow(unreachable_code)]
 
-pub mod csp_port;
-pub mod csp_queue;
+use std::collections::VecDeque;
+
+use self::{router::Router, interfaces::if_udp::CspInterface};
+
+pub mod utils;
+pub mod interfaces;
+pub mod buffer;
 pub mod types;
+pub mod router;
 
 
 // these are going to be architecture specific, use feature guards??
 fn router_start() -> u32 { !unimplemented!() }
 fn server_start() -> u32 { !unimplemented!() }
 fn client_start() -> u32 { !unimplemented!() }
+
+pub struct Csp {
+    qfifo: VecDeque<types::CspPacket>,
+    interfaces: VecDeque<Box<dyn CspInterface>>,
+    router: router::Router,
+}
+
+impl Default for Csp {
+    fn default() -> Self {
+        // buffer init
+        // conn init
+        // qfifo: ?
+        // interface list?
+        Csp {
+            qfifo: VecDeque::new(),
+            interfaces: VecDeque::new(),
+            router: Router::new(),
+        }
+    }
+
+}
+
+impl Csp {
+    pub fn add_interface(&mut self, interface: Box<dyn CspInterface>) {
+        self.interfaces.push_back(interface);
+    }
+
+    pub fn router_start(&self) {
+        let router = self.router.start(Router::route_work);
+    }
+}
 
 // > 1.  the driver layer forwards the raw data frames to the interface, in
 // >     this case CAN frames
@@ -49,27 +86,6 @@ fn client_start() -> u32 { !unimplemented!() }
 // 2. Interface converts/copies data into a packet
 // 3. Packet is queued for later CSP processing, by calling csp_qfifo_write
 
-// interface type: Implements Layer2, and uses Layer1 to send and recieve
-struct csp_iface_s {
-    addr: u16,
-    netmask: u16,
-    name: &'static u8,
-    // void * interface_data
-    // void * driver_data
-    // nexthop_t nexthop;
-    mtu: u16, 
-    split_horizon_off: u8,
-    tx: u32,                // transmit errors
-    rx: u32,                // receive error
-    drop: u32,              // dropped packets
-    autherr: u32,           // authentication errors
-    frame: u32,             // frame format errors
-    txbytes: u32,           // transmitted bytes
-    rxbytes: u32,           // received bytes 
-    irq: u32,               // interrupts 
-    // struct csp_iface * next;
-
-}
 
 
 

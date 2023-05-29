@@ -14,18 +14,19 @@ pub fn dump_buffer(buffer: &[u8], len: usize) {
             ascii_row.clear();
         }
 
-        // if we're at a multiple of 8, 
-        if i % 8 == 0 {
-            hex_row.push_str(&format!("{:08X}: ", i));
-        }
+        // if we're at a multiple of 8, or at the beginning of a row
+        // put the addrewss offset
+        // if i % 8 == 0 {
+        //     hex_row.push_str(&format!("{:08X}: ", i));
+        // }
 
-        // if 
+        // for each byte, push the ascii character
         hex_row.push_str(&format!("{:02X} ", byte));
         ascii_row.push(if byte.is_ascii_graphic() { byte as char } else { ' ' });
     }
 
     if !hex_row.is_empty() {
-        let address_offset = (buffer.len() / 8) * 8;
+        let address_offset = buffer.len();
         let remaining = 8 - (len % 8);
         for _ in 0..remaining {
             hex_row.push_str("XX ");
