@@ -1,63 +1,57 @@
+use std::collections::VecDeque;
 use std::net::UdpSocket;
 use std::net::{IpAddr, Ipv4Addr};
+use std::sync::{Arc, Mutex};
+use std::thread;
 use crate::csp::types::CspPacket;
 use crate::csp::{utils, types};
+use crate::csp::CspQueue;
 
-pub trait CspInterface {
-    fn nexthop(&self);
-}
 
 pub struct UDPInterface {
     host: IpAddr,
     lport: u16,
     rport: u16,
+    // qfifo: Arc<Mutex<VecDeque<types::CspPacket>>>,
     // TODO: somehow need to generalize this type to allow for multiple
     // interfaces in the same list 
 }
 
 impl UDPInterface {
-    pub fn init(address: &str, port: u16) -> Self {
+    pub fn new(address: &str, port: u16, qfifo: CspQueue) -> Self {
         let address = address.parse::<IpAddr>().unwrap();
+
         UDPInterface { host: address, lport: port, rport: port }
+        // UDPInterface { host: address, lport: port, rport: port , qfifo }
     }
 
-    pub fn rx_loop(&mut self) {
-        let mut connection = false;
-        // let mut socket: UdpSocket = None;
+    fn rx_work(&mut self, socket: &UdpSocket, qfifo: CspQueue) {
+        let mut buf: [u8; 256] = [0; 256];
+        let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
+        // buffer has data
+        //
+        println!("Message from {src_addr}: ");
+        utils::dump_buffer(&buf, len);
 
-        while !connection {
-            // tuple of (IpAddr, u16) implements ToSocketAddrs
-            let mut connected = UdpSocket::bind( (self.host, self.rport) ).expect("Error: Can't create socket");
-            connection = !connection;
-        }
+        let packet = CspPacket::new(len, buf);
+    }
 
-        // let's figure out the buffers
-        let mut buf: Vec<u8> = Vec::new();
+    pub fn rx_loop(&mut self, qfifo: CspQueue) {
+        // tuple of (IpAddr, u16) implements ToSocketAddrs
+        let socket = UdpSocket::bind( (self.host, self.rport) ).expect("Error: Can't create socket");
 
         loop {
-            let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
-            println!("Message from {src_addr}: ");
-            utils::dump_buffer(&buf, len);
-            // pub struct CspPacket {
-            //     length: u16,
-            //     // id: CspID,
-            //     // next: &CspPacket
-            //     header: [u8; 8],
-            //     data: CspData,
-            // }
-            // let packet = CspPacket {
-            //     length: len as u16, 
-            //     header: buf[0..7].try_into().unwrap(),
-            //     data: 
-            // };
-
+            self.rx_work(&socket, qfifo.clone())
         }
-        // pack this up and send to router
     }
+
 }
 
-impl CspInterface for UDPInterface {
+impl types::CspInterface for UDPInterface {
     fn nexthop(&self) {
         unimplemented!();
+    }
+    fn start_thread(&mut self, iface: &mut Arc<Mutex<Box<UDPInterface>>> , qfifo: CspQueue) {
+        
     }
 }

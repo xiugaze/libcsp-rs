@@ -3,9 +3,10 @@
 // TODO: For unimplemented!()
 #![allow(unreachable_code)]
 
-use std::collections::VecDeque;
 
-use self::{router::Router, interfaces::if_udp::CspInterface};
+use std::{collections::VecDeque, sync::{Arc, Mutex}};
+
+use self::{router::Router, interfaces::if_udp::UDPInterface, types::CspPacket};
 
 pub mod utils;
 pub mod interfaces;
@@ -19,10 +20,18 @@ fn router_start() -> u32 { !unimplemented!() }
 fn server_start() -> u32 { !unimplemented!() }
 fn client_start() -> u32 { !unimplemented!() }
 
+pub type CspQueue = Arc<Mutex<VecDeque<CspPacket>>>;
+pub type CspInterfaces = VecDeque<Arc<Mutex<Box<dyn types::CspInterface>>>>;
+
 pub struct Csp {
-    qfifo: VecDeque<types::CspPacket>,
-    interfaces: VecDeque<Box<dyn CspInterface>>,
+    qfifo: CspQueue,
+    pub interfaces: CspInterfaces,
+    pub num_interfaces: usize,
     router: router::Router,
+}
+
+pub enum InterfaceType {
+    Udp, 
 }
 
 impl Default for Csp {
@@ -32,22 +41,28 @@ impl Default for Csp {
         // qfifo: ?
         // interface list?
         Csp {
-            qfifo: VecDeque::new(),
+            qfifo: Arc::new(Mutex::new(VecDeque::<CspPacket>::new())),
             interfaces: VecDeque::new(),
+            num_interfaces: 0,
             router: Router::new(),
         }
     }
-
 }
 
 impl Csp {
-    pub fn add_interface(&mut self, interface: Box<dyn CspInterface>) {
-        self.interfaces.push_back(interface);
+    pub fn add_interface(&mut self, iface: InterfaceType) {
+        let qfifo = Arc::clone(&self.qfifo);
+        let iface = match iface {
+            InterfaceType::Udp => UDPInterface::new("127.0.0.1", 8080, qfifo)
+        };
+        self.interfaces.push_back(Arc::new(Mutex::new(Box::new(iface))));
+        self.num_interfaces += 1;
     }
 
-    pub fn router_start(&self) {
-        let router = self.router.start(Router::route_work);
+    pub fn router_start(&mut self) {
+        self.router.start(Router::route_work);
     }
+
 }
 
 // > 1.  the driver layer forwards the raw data frames to the interface, in
