@@ -23,5 +23,15 @@ impl CspPacket {
 
 pub trait CspInterface {
     fn nexthop(&self);
-    fn start_thread(&mut self, iface: &mut Arc<Mutex<Box<dyn CspInterface>>>, qfifo: CspQueue);
+    // TODO: Move out to UDP type only
+    fn start_thread(&mut self, iface: &mut Arc<Mutex<Box<dyn CspInterface>>>, qfifo: CspQueue)
+}
+
+
+pub struct Outer {
+    inner: Arc<Mutex<Inner>>,
+}
+
+pub struct Inner {
+    state: i32,
 }
