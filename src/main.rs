@@ -1,9 +1,5 @@
-use std::net::UdpSocket;
-
-
-
 pub mod csp;
-use csp::{utils, Csp, interfaces::if_udp::UDPInterface, InterfaceType};
+use csp::{Csp, InterfaceType};
 
 fn main() {
    //  let mut socket = UdpSocket::bind("127.0.0.1:8080").unwrap();

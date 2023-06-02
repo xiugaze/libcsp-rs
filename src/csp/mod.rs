@@ -6,7 +6,7 @@
 
 use std::{collections::VecDeque, sync::{Arc, Mutex}};
 
-use self::{router::Router, interfaces::if_udp::UDPInterface, types::CspPacket};
+use self::{router::Router, interfaces::if_udp::UdpInterface, types::{CspPacket, CspInterface}};
 
 pub mod utils;
 pub mod interfaces;
@@ -21,7 +21,7 @@ fn server_start() -> u32 { !unimplemented!() }
 fn client_start() -> u32 { !unimplemented!() }
 
 pub type CspQueue = Arc<Mutex<VecDeque<CspPacket>>>;
-pub type CspInterfaces = VecDeque<Arc<Mutex<Box<dyn types::CspInterface>>>>;
+pub type CspInterfaces = VecDeque<Box<dyn types::CspInterface>>;
 
 pub struct Csp {
     qfifo: CspQueue,
@@ -52,10 +52,10 @@ impl Default for Csp {
 impl Csp {
     pub fn add_interface(&mut self, iface: InterfaceType) {
         let qfifo = Arc::clone(&self.qfifo);
-        let iface = match iface {
-            InterfaceType::Udp => UDPInterface::new("127.0.0.1", 8080, qfifo)
-        };
-        self.interfaces.push_back(Arc::new(Mutex::new(Box::new(iface))));
+        let csp_interface = Box::from( match iface {
+            InterfaceType::Udp => UdpInterface::from("127.0.0.1", 8080, qfifo)
+        });
+        self.interfaces.push_back(csp_interface);
         self.num_interfaces += 1;
     }
 
@@ -63,6 +63,10 @@ impl Csp {
         self.router.start(Router::route_work);
     }
 
+    pub fn interfaces_start(&mut self) {
+        for i in 0..self.num_interfaces {
+        }
+    }
 }
 
 // > 1.  the driver layer forwards the raw data frames to the interface, in
