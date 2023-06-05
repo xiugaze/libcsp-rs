@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::io;
 use std::net::UdpSocket;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex};
@@ -77,12 +78,12 @@ impl UdpState {
     }
 }
 
-impl types::CspInterface for UdpInterface {
-    fn nexthop(&self) {
-        unimplemented!();
-    }
-    // temp
-    fn go(&mut self) {
-        self.start();
+impl types::NextHop for UdpInterface {
+    fn nexthop(&self, _via: u16, packet: CspPacket, _from_me: bool) -> io::Result<usize>{
+        let state = self.state.lock().unwrap();
+        let socket = UdpSocket::bind((state.host, state.lport)).expect("Error: Can't bind to local socket");
+
+        let buf = packet.make_header();
+        socket.send(&buf)
     }
 }
