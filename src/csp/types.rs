@@ -1,8 +1,9 @@
-use std::{collections::VecDeque, sync::{Mutex, Arc}, io};
+use std::{collections::VecDeque, sync::{Mutex, Arc}, io, fmt};
 
-use super::{CspQueue, CspId};
+use super::{CspQueue, CspId, interfaces::CspInterface};
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct CspPacket {
     length: u16,
     id: CspId,
@@ -19,6 +20,7 @@ impl CspPacket {
             data: data[6..length as usize].to_owned(),
         }
     }
+
     pub fn len(&self) -> u16 {
         self.length
     }
@@ -31,8 +33,24 @@ impl CspPacket {
     pub fn id(&self) -> &CspId {
         &self.id
     }
+}
+impl fmt::Display for CspPacket {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 
+        let bytes = &self.data[0..5];
+        let mut data_preview = String::new();
+        for byte in bytes {
+            data_preview.push_str(&format!("{:02X} ", byte))
+        }
 
+        write!(f, "Packet {{\n
+            \t Source: {},\n
+            \t Destination: {},\n
+            \t Data: {data_preview}...\n
+        }}", 
+        self.id.source, 
+        self.id.destination)
+    }
 }
 
 // pub struct Outer {
@@ -54,10 +72,5 @@ impl CspPacket {
 // }
 
 
-pub trait NextHop {
-    fn nexthop(&self, via: u16, packet: CspPacket, from_me: bool) -> io::Result<usize>;
-    // TODO: Move out to UDP type only
-    // fn start_thread(&mut self, iface: &mut Arc<Mutex<Box<dyn NextHop>>>, qfifo: CspQueue)
-}
 
 
