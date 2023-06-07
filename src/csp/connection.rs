@@ -1,7 +1,5 @@
 use std::collections::VecDeque;
 
-use crate::csp::CspQueue;
-
 use super::{types::CspPacket, CspId};
 
 enum ConnectionType {

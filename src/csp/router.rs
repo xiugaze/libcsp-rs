@@ -13,7 +13,7 @@ pub struct Router {
 }
 
 impl Router {
-    pub fn new(qfifo: CspQueue) -> Self {
+    pub fn new(qfifo: Arc<Mutex<CspQfifo>>) -> Self {
         // TODO: Implement
         Router {
             thread: None,
@@ -22,6 +22,7 @@ impl Router {
         }
     }
 
+    // TODO: Unimplemented
     pub fn start<F>(&mut self, route_work: F)
         where F: 'static + Send + FnMut() {
         
@@ -36,7 +37,7 @@ impl Router {
 
     pub fn route_work(&mut self) {
         // 1. Get the next packet to route
-        let input =  self.qfifo.lock().unwrap().pop_front().unwrap();
+        let (packet, iface) = self.qfifo.lock().unwrap().pop();
         // 2. Print the packet
     }
 

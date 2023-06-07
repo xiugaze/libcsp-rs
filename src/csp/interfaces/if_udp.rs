@@ -12,9 +12,6 @@ use crate::csp::interfaces::{
     NextHop,
 };
 
-
-
-
 pub struct UdpInterface {
     iface: Arc<Mutex<CspInterfaceState>>,
     state: Arc<Mutex<UdpState>>,
@@ -98,10 +95,9 @@ impl UdpState {
 }
 
 impl NextHop for UdpInterface {
-    fn nexthop(&self, _via: u16, packet: CspPacket, _from_me: bool) -> io::Result<usize>{
+    fn nexthop(&self, packet: CspPacket) -> io::Result<usize>{
         let state = self.state.lock().unwrap();
         let socket = UdpSocket::bind((state.host, state.lport)).expect("Error: Can't bind to local socket");
-
         let buf = packet.make_header();
         socket.send(&buf)
 

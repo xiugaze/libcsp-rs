@@ -1,6 +1,10 @@
 use std::{collections::VecDeque, sync::{Mutex, Arc}, io, fmt};
+use super::{
+    qfifo::CspQfifo,
+    interfaces::CspInterfaceState,
+    CspId,
+};
 
-use super::{CspQueue, CspId, interfaces::CspInterface};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -52,25 +56,6 @@ impl fmt::Display for CspPacket {
         self.id.destination)
     }
 }
-
-// pub struct Outer {
-//     inner: Arc<Mutex<Inner>>,
-// }
-//
-// pub struct Inner {
-//     state: i32,
-// }
-// pub struct NextHop {
-//     iface: Arc<Mutex<Box<dyn InterfaceHandle>>>
-// }
-// impl NextHop {
-//     pub fn from(handle: Box<dyn InterfaceHandle>) -> NextHop {
-//         NextHop {
-//             iface: Arc::new(Mutex::new(handle)),
-//         }
-//     }
-// }
-
 
 
 

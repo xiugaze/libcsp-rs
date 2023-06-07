@@ -12,7 +12,8 @@ use self::{
     types::CspPacket,
     interfaces::{
         NextHop,
-        if_udp::UdpInterface, CspInterfaceState,
+        //if_udp::UdpInterface, CspInterfaceState,
+        if_loopback::{self, LoopbackInterface}
     }, qfifo::CspQfifo,
 };
 
@@ -24,17 +25,11 @@ pub mod router;
 pub mod connection;
 pub mod qfifo;
 
-
-// these are going to be architecture specific, use feature guards??
-fn router_start() -> u32 { !unimplemented!() }
-fn server_start() -> u32 { !unimplemented!() }
-fn client_start() -> u32 { !unimplemented!() }
-
 //pub type CspQueue = Arc<Mutex<VecDeque<CspPacket>>>;
 pub type InterfaceList = VecDeque<Box<dyn NextHop>>;
 
 pub struct Csp {
-    qfifo: CspQfifo,
+    qfifo: Arc<Mutex<CspQfifo>>,
     pub connection_pool: Vec<CspConnection>,
     pub interfaces: InterfaceList,
     pub num_interfaces: usize,
@@ -63,9 +58,9 @@ pub enum InterfaceType {
 
 impl Default for Csp {
     fn default() -> Self {
-        let qfifo = CspQfifo::new();
+        let qfifo = Arc::new(Mutex::new(CspQfifo::new()));
         Csp {
-            qfifo, 
+            qfifo: Arc::clone(&qfifo), 
             connection_pool: Vec::new(),
             interfaces: VecDeque::new(),
             num_interfaces: 0,
@@ -75,14 +70,13 @@ impl Default for Csp {
 }
 
 impl Csp {
-    pub fn add_interface(&mut self, iface: InterfaceType) {
+    pub fn add_interface(&mut self, iface_type: &str) {
         let qfifo = Arc::clone(&self.qfifo);
-        // TODO: Get rid of the InterfaceType enum, figure something else out
-        let csp_interface = Box::from( match iface {
-            InterfaceType::Udp => UdpInterface::from(
-                "127.0.0.1", 8080, qfifo, CspInterfaceState {name: String::from("UDP"), ..Default::default()})
-        });
-        self.interfaces.push_back(csp_interface);
+        let iface = match iface_type {
+            "loopback" => LoopbackInterface::init(&qfifo),
+            _ => panic!("Error: interface does not exist"),
+        };
+        self.interfaces.push_back(Box::new(iface));
         self.num_interfaces += 1;
     }
 
@@ -94,11 +88,9 @@ impl Csp {
         iface.nexthop(packet)
     }
 
-    pub fn read(&self) -> CspPacket{
-        self.qfifo.lock()
-            .unwrap()
-            .pop_front()
-            .unwrap()
+    pub fn read(&self) -> Arc<Mutex<CspPacket>> {
+        let (packet, _) = self.qfifo.lock().unwrap().pop();
+        packet
     }
 }
 
