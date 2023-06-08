@@ -20,7 +20,7 @@ impl CspPacket {
         CspPacket {
             length: length as u16, 
             id,
-            header: data[0..5].try_into().unwrap(), 
+            header: data[0..6].to_owned().try_into().unwrap(),
             data: data[6..length as usize].to_owned(),
         }
     }
