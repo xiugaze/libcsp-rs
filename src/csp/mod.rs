@@ -4,7 +4,7 @@
 #![allow(unreachable_code)]
 
 
-use std::{collections::VecDeque, sync::{Arc, Mutex}, io};
+use std::{collections::VecDeque, sync::{Arc, Mutex}, io, rc::Rc};
 
 use self::{
     router::Router, 
@@ -25,8 +25,7 @@ pub mod router;
 pub mod connection;
 pub mod qfifo;
 
-//pub type CspQueue = Arc<Mutex<VecDeque<CspPacket>>>;
-pub type InterfaceList = VecDeque<Box<dyn NextHop>>;
+pub type InterfaceList = VecDeque<Rc<Box<dyn NextHop>>>;
 
 pub struct Csp {
     qfifo: Arc<Mutex<CspQfifo>>,
@@ -76,15 +75,12 @@ impl Csp {
             "loopback" => LoopbackInterface::init(&qfifo),
             _ => panic!("Error: interface does not exist"),
         };
-        self.interfaces.push_back(Box::new(iface));
+        self.interfaces.push_back(Rc::new(Box::new(iface)));
         self.num_interfaces += 1;
     }
 
-    // pub fn router_start(&mut self) {
-    //     self.router.start(Router::route_work);
-    // }
-
-    pub fn send_direct(iface: Box<dyn NextHop>, index: usize, via: u16, packet: CspPacket, from_me: bool) -> io::Result<usize>{
+    pub fn send_direct(&mut self, index: usize, packet: CspPacket) -> io::Result<usize> {
+        let iface = Rc::clone(&self.interfaces.get(index).unwrap());
         iface.nexthop(packet)
     }
 

@@ -40,7 +40,6 @@ impl CspPacket {
 }
 impl fmt::Display for CspPacket {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         let bytes = &self.data[0..5];
         let mut data_preview = String::new();
         for byte in bytes {
