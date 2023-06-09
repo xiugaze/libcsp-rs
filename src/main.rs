@@ -3,6 +3,8 @@ use std::fs::read;
 
 use csp::{Csp, InterfaceType, types::CspPacket, CspId};
 
+use crate::csp::utils::test_buffer;
+
 fn main() {
     //  let mut socket = UdpSocket::bind("127.0.0.1:8080").unwrap();
     //
@@ -21,16 +23,26 @@ fn main() {
     let mut csp = Csp::default();
     csp.add_interface("loopback");
 
-    let buffer: [u8; 256] =  [0; 256];
+    let buffer_1: [u8; 256] = test_buffer();
+    let buffer_2: [u8; 256] = test_buffer();
 
-    let packet = CspPacket::new(
+    let packet_1 = CspPacket::new(
         256, 
-        buffer, 
+        buffer_1, 
         CspId::default()
     );
 
-    csp.send_direct(0, packet);
+    let packet_2 = CspPacket::new(
+        256, 
+        buffer_2, 
+        CspId::default()
+    );
+
+    csp.send_from_list(0, packet_1);
+    csp.send_from_list(0, packet_2);
     let packet = csp.read();
-    println!("{}", packet.lock().unwrap())
+    println!("{}", packet.lock().unwrap());
+    let packet = csp.read();
+    println!("{}", packet.lock().unwrap());
     
 }

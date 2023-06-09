@@ -7,13 +7,14 @@ use super::{
 
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CspPacket {
     length: u16,
     id: CspId,
     header: [u8; 6],
     data: Vec<u8>,
 }
+
 
 impl CspPacket {
     pub fn new(length: usize, data: [u8; 256], id: CspId) -> Self {
@@ -46,13 +47,10 @@ impl fmt::Display for CspPacket {
             data_preview.push_str(&format!("{:02X} ", byte))
         }
 
-        write!(f, "Packet {{\n
-            \t Source: {},\n
-            \t Destination: {},\n
-            \t Data: {data_preview}...\n
-        }}", 
+        write!(f, "Packet {{\n\tSource: {},\n\tDestination: {},\n\tHeader{:?}\n\tData: {data_preview}...\n}}", 
         self.id.source, 
-        self.id.destination)
+        self.id.destination,
+        self.header)
     }
 }
 

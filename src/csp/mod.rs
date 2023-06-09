@@ -17,6 +17,7 @@ use self::{
     }, qfifo::CspQfifo,
 };
 
+pub mod tests;
 pub mod utils;
 pub mod interfaces;
 pub mod buffer;
@@ -79,8 +80,12 @@ impl Csp {
         self.num_interfaces += 1;
     }
 
-    pub fn send_direct(&mut self, index: usize, packet: CspPacket) -> io::Result<usize> {
-        let iface = Rc::clone(&self.interfaces.get(index).unwrap());
+    pub fn send_direct(iface: Arc<Mutex<dyn NextHop>>, packet: CspPacket) -> io::Result<usize> {
+        iface.lock().unwrap().nexthop(packet)
+    }
+
+    pub fn send_from_list(&mut self, index: usize, packet: CspPacket) -> io::Result<usize> {
+        let iface = Rc::clone(&self.interfaces[index]);
         iface.nexthop(packet)
     }
 

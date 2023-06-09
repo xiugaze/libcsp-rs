@@ -37,3 +37,22 @@ pub fn dump_buffer(buffer: &[u8], len: usize) {
 
     println!();
 }
+
+pub fn test_buffer() -> [u8; 256] {
+    let mut buffer: [u8; 256] = [0; 256];
+
+    for i in 0..6 {
+        buffer[i] = 0xFF;
+    }
+
+    let mut counter: u8 = 0x00;
+    for i in 6..256 {
+        buffer[i] = counter;
+        if counter == 0xFF {
+            counter = 0x00
+        } else {
+            counter += 1;
+        }
+    }
+    buffer
+}

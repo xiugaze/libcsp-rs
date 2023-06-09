@@ -24,6 +24,17 @@ pub struct CspInterfaceState {
     tx_bytes: u32,          // successfully transmitted bytes
     rx_bytes: u32,          // successfully received bytes
 }
+impl CspInterfaceState {
+    pub fn increment_tx(&mut self) {
+        self.tx += 1;
+    }
+    pub fn increment_rx(&mut self) {
+        self.rx += 1;
+    }
+    pub fn address(&self) -> u16 {
+        self.address
+    }
+}
 
 
 pub trait NextHop {
