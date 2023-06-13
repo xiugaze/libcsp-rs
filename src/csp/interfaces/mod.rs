@@ -12,9 +12,9 @@ pub mod if_loopback;
 // implements NextHop
 
 /**
-    Common metad
+    Common metadata for each interface
 */
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CspInterfaceState {
     address: u16,           // address on this submet
     netmask: u16,           // subnet mask
@@ -36,15 +36,19 @@ impl CspInterfaceState {
     }
 }
 
-
 pub trait NextHop {
     /**
         Transmits the packet on the target interface
     */
-    fn nexthop(&self, packet: CspPacket) -> io::Result<usize>;
+    fn nexthop(self: Arc<Self>, packet: CspPacket) -> io::Result<usize>;
 
     /**
         Returns an `Arc` to the state struct of the target interface
     */
     fn get_state(&self) -> Arc<Mutex<CspInterfaceState>>;
+}
+impl core::fmt::Debug for dyn NextHop {
+     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            write!(f, "State: {:?}", self.get_state().lock().unwrap())
+        }
 }

@@ -38,16 +38,17 @@ impl Router {
 
     pub fn route_work(&mut self) {
         // 1. Get the next packet to route
+        // Removes the packet
         let (packet, iface) = self.qfifo.lock().unwrap().pop();
 
         // increment received packets
-        iface.lock().unwrap().increment_rx();
+        iface.get_state().lock().unwrap().increment_rx();
         
-        let is_to_me = (packet.lock().unwrap().id().destination == iface.lock().unwrap().address());
+        let is_to_me = packet.id().destination == 
+            iface.get_state().lock().unwrap().address();
 
         if !is_to_me {
-            // TODO: This is not going to work, not sure how to do this
-            Csp::send_direct(Arc::clone(&iface), *packet.lock().unwrap());
+            Csp::send_direct(Arc::clone(&iface), packet);
         }
 
     }

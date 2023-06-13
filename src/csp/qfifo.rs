@@ -2,12 +2,13 @@ use std::{sync::{Mutex, Arc}, collections::VecDeque, io};
 
 use super::{types::CspPacket, interfaces::{NextHop, CspInterfaceState}};
 
+#[derive(Debug)]
 pub struct QfifoElement {
-    pub packet: Arc<Mutex<CspPacket>>,
-    pub interface: Arc<Mutex<CspInterfaceState>>,
+    pub packet: CspPacket,
+    pub interface: Arc<dyn NextHop>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CspQfifo {
     qfifo: VecDeque<QfifoElement>
 }
@@ -19,20 +20,22 @@ impl CspQfifo {
         }
     }
 
-    pub fn push(&mut self, packet: Arc<Mutex<CspPacket>>, interface: Arc<Mutex<CspInterfaceState>>) -> io::Result<usize> {
+    pub fn push(&mut self, packet: CspPacket, interface: Arc<dyn NextHop>) -> io::Result<usize> {
         let qfifo_element = QfifoElement {
-            packet: Arc::clone(&packet),
+            packet,
             interface: Arc::clone(&interface),
         };
         self.qfifo.push_back(qfifo_element);
         return Ok(0)
     }
 
-    pub fn pop(&mut self) -> (Arc<Mutex<CspPacket>>, Arc<Mutex<CspInterfaceState>>) {
+    pub fn pop(&mut self) -> (CspPacket, Arc<dyn NextHop>) {
+        // removes from queue, qfifio_element is only owner of Arcs
         let qfifo_element = self.qfifo.pop_front().unwrap();
-        let packet = Arc::clone(&qfifo_element.packet);
-        let interface = Arc::clone(&qfifo_element.interface);
+        
+        let packet = qfifo_element.packet;          // moves out of
+        let interface = qfifo_element.interface;    // moves out of
         (packet, interface)
-    }
+    }   // qfifo_element dropped here
 }
 

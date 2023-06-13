@@ -11,6 +11,6 @@ fn test_loopback_send_direct() {
 
     csp.send_from_list(0, to_send);
     let rec = csp.read();
-    assert_eq!(packet, *rec.lock().unwrap());
+    assert_eq!(packet, rec);
 }
 
