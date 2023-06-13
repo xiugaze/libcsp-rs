@@ -6,6 +6,7 @@ use crate::csp::CspPacket;
 
 //pub mod if_udp;
 pub mod if_loopback;
+pub mod if_drain;
 
 // Common metadata for all interfaces
 // Interfaces are a struct that holds a CspInterface and 
@@ -33,6 +34,13 @@ impl CspInterfaceState {
     }
     pub fn address(&self) -> u16 {
         self.address
+    }
+
+    pub fn from_name(name: &str) -> Self {
+        CspInterfaceState {
+            name: String::from(name), 
+            ..Default::default()
+        }
     }
 }
 

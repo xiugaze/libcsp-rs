@@ -1,3 +1,7 @@
+use std::collections::VecDeque;
+
+use super::types::CspPacket;
+
 
 pub enum CspPortState {
     Closed,
@@ -5,12 +9,22 @@ pub enum CspPortState {
     // Callback,
 }
 pub struct CspPort {
-    state: CspPortState,
-    socket: CspSocket,
+    pub state: CspPortState,
+    pub socket: CspSocket,
 }
 
 pub struct CspSocket {
     rx_queue: VecDeque<CspPacket>,
+    conn_less: bool,
+}
+impl CspSocket {
+    pub fn conn_less(&self) -> bool {
+        self.conn_less
+    }
+
+    pub fn enqueue(&mut self, packet: CspPacket) {
+        self.rx_queue.push_back(packet);
+    }
 }
 
 // pub struct

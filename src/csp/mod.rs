@@ -13,8 +13,8 @@ use self::{
     interfaces::{
         NextHop,
         //if_udp::UdpInterface, CspInterfaceState,
-        if_loopback::{self, LoopbackInterface}
-    }, qfifo::CspQfifo,
+        if_loopback::{self, LoopbackInterface}, if_drain::DrainInterface
+    }, qfifo::CspQfifo, port::CspPort,
 };
 
 pub mod tests;
@@ -25,6 +25,7 @@ pub mod types;
 pub mod router;
 pub mod connection;
 pub mod qfifo;
+pub mod port;
 
 pub type InterfaceList = VecDeque<Arc<dyn NextHop>>;
 
@@ -34,6 +35,7 @@ pub struct Csp {
     pub interfaces: InterfaceList,
     pub num_interfaces: usize,
     router: router::Router,
+    ports: Arc<Mutex<Vec<CspPort>>>
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -59,12 +61,14 @@ pub enum InterfaceType {
 impl Default for Csp {
     fn default() -> Self {
         let qfifo = Arc::new(Mutex::new(CspQfifo::new()));
+        let ports = Arc::new(Mutex::new(Vec::new()));
         Csp {
             qfifo: Arc::clone(&qfifo), 
             connection_pool: Vec::new(),
             interfaces: VecDeque::new(),
             num_interfaces: 0,
-            router: Router::new(Arc::clone(&qfifo)),
+            ports: Arc::clone(&ports),
+            router: Router::new(Arc::clone(&qfifo), Arc::clone(&ports)),
         }
     }
 }
@@ -72,12 +76,13 @@ impl Default for Csp {
 impl Csp {
     pub fn add_interface(&mut self, iface_type: &str) {
         let qfifo = Arc::clone(&self.qfifo);
-        let iface = match iface_type {
+        let iface: Arc<dyn NextHop> = match iface_type {
             // TODO: Take in an Arc to self, and pass it in
-            "loopback" => LoopbackInterface::init(&qfifo, self.num_interfaces),
+            "loopback" => Arc::new(LoopbackInterface::init(&qfifo, self.num_interfaces)),
+            "drain" => Arc::new(DrainInterface::new()),
             _ => panic!("Error: invalid interface name (may not exist)"),
         };
-        self.interfaces.push_back(Arc::new(iface));
+        self.interfaces.push_back(iface);
         self.num_interfaces += 1;
     }
 

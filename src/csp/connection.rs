@@ -2,12 +2,13 @@ use std::collections::VecDeque;
 
 use super::{types::CspPacket, CspId};
 
-enum ConnectionType {
+#[derive(Clone, Copy)]
+pub enum ConnectionType {
     Client,
     Server,
 }
 
-enum ConnectionState {
+pub enum ConnectionState {
     Open,
     Closed,
 }
@@ -46,6 +47,15 @@ impl CspConnection {
             id_out: outgoing_id,
             id_in: incoming_id 
         }
+    }
 
+    pub fn id_out(&self) -> &CspId {
+        &self.id_out
+    }
+    pub fn id_in(&self) -> &CspId {
+        &self.id_in
+    }
+    pub fn conn_type(&self) -> ConnectionType {
+        self.conn_type
     }
 }

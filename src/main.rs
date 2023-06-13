@@ -20,16 +20,13 @@ fn main() {
     //  }
     //
 
-    // TODO: Maybe the CSP type should get wrapped in an Arc on initialization? Is this a clunky
-    // API? But then we could pass global state in to the inner state, emulating shared ownership
-    // of interfaces, sockets, connections, etc in the C version?
-    // I am so lost. 
-    //
     let mut csp = Csp::default();
     csp.add_interface("loopback");
+    csp.add_interface("drain");
 
     let buffer_1: [u8; 256] = test_buffer();
     let buffer_2: [u8; 256] = test_buffer();
+    let buffer_3: [u8; 256] = test_buffer();
 
     let packet_1 = CspPacket::new(
         256, 
@@ -43,8 +40,15 @@ fn main() {
         CspId::default()
     );
 
+    let packet_3 = CspPacket::new(
+        256, 
+        buffer_2, 
+        CspId::default()
+    );
+
     csp.send_from_list(0, packet_1);
     csp.send_from_list(0, packet_2);
+    csp.send_from_list(1, packet_3);
 
     println!("{:?}", csp.qfifo.lock());
 
@@ -52,5 +56,4 @@ fn main() {
     println!("{}", packet);
     let packet = csp.read();
     println!("{}", packet);
-    
 }
