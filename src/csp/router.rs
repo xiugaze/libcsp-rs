@@ -5,7 +5,7 @@ use std::{sync, thread};
 use std::sync::atomic::AtomicBool;
 
 use super::{Csp, CspId};
-use super::connection::{CspConnection, ConnectionType};
+use super::connection::{CspConnection, ConnectionType, ConnectionState};
 use super::port::CspPort;
 use super::qfifo::CspQfifo;
 
@@ -85,13 +85,24 @@ impl Router {
         let index = self.find_connection_index(packet.id());
         let mut connection: Rc<CspConnection> = match index {
             Some(index) =>  {
-                connection = Rc::clone(&self.connections[index]);
+                let connection = Rc::clone(&self.connections[index]);
                 do_security_check()
             },
             None => {
-                push_new_connection()
+                // security check
+                let sid = packet.id();
+                let did = CspId {
+                    priority: sid.priority,
+                    flags: sid.flags,
+                    source: sid.source,
+                    destination: sid.destination,
+                    dport: sid.sport,
+                    sport: sid.dport,
+                };
+
+                Rc::new(CspConnection::from_ids(sid.clone(), did, ConnectionType::Server))
             },
-        }
+        };
     }
 
     fn find_connection_index(&self, id: &CspId) ->  Option<usize> {
