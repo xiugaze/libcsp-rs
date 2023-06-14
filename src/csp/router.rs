@@ -1,6 +1,7 @@
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
+use std::thread::JoinHandle;
 use std::{sync, thread};
 use std::sync::atomic::AtomicBool;
 
@@ -9,26 +10,39 @@ use super::connection::{CspConnection, ConnectionType, ConnectionState};
 use super::port::CspPort;
 use super::qfifo::CspQfifo;
 
-#[derive(Default)]
 pub struct Router {
     thread: Option<thread::JoinHandle<()>>,
+    state: Arc<RouterState>,
+}
+
+#[derive(Default)]
+pub struct RouterState {
     alive: sync::Arc<AtomicBool>,
     qfifo: Arc<Mutex<CspQfifo>>,
     ports: Arc<Mutex<Vec<CspPort>>>,
-    connections: Vec<Rc<CspConnection>>,
+    connections: Vec<CspConnection>,
+}
+impl Router {
+    pub fn route_start(&mut self) {
+        self.thread = Some(thread::spawn(move || {
+            loop {
+                self.state.route_work();
+            }
+        }));
+    }
 }
 
-impl Router {
+impl RouterState {
     pub fn new(qfifo: Arc<Mutex<CspQfifo>>, ports: Arc<Mutex<Vec<CspPort>>>) -> Self {
         // TODO: Implement
-        Router {
-            thread: None,
+        RouterState {
             alive: sync::Arc::new(AtomicBool::new(false)),
             qfifo,
             ports, 
             connections: Vec::new(),
         }
     }
+
 
     pub fn route_work(&mut self) {
         // 1. Get the next packet to route
@@ -77,32 +91,40 @@ impl Router {
 
         */
         let socket = &mut self.ports.lock().unwrap()[packet.id().dport as usize].socket;
+
+        /* If connectionless, add the packet directly to the socket queue */
         if socket.conn_less() {
             socket.enqueue(packet);
             return;
         }
 
         let index = self.find_connection_index(packet.id());
-        let mut connection: Rc<CspConnection> = match index {
+        let connection: &mut CspConnection = match index {
+            /* Find an existing connection */
             Some(index) =>  {
-                let connection = Rc::clone(&self.connections[index]);
-                do_security_check()
+                let conn = &mut self.connections[index];
+                conn
             },
+            /* Accept a new incoming connection */
             None => {
                 // security check
+                RouterState::route_security_check();
                 let sid = packet.id();
                 let did = CspId {
                     priority: sid.priority,
                     flags: sid.flags,
-                    source: sid.source,
-                    destination: sid.destination,
+                    source: sid.destination,
+                    destination: sid.source,
                     dport: sid.sport,
                     sport: sid.dport,
                 };
 
-                Rc::new(CspConnection::from_ids(sid.clone(), did, ConnectionType::Server))
+                let conn = CspConnection::from_ids(sid.clone(), did, ConnectionType::Server);
+                self.connections.push(conn);
+                self.connections.last_mut().unwrap()
             },
         };
+        connection.enqueue(packet);
     }
 
     fn find_connection_index(&self, id: &CspId) ->  Option<usize> {
@@ -116,6 +138,11 @@ impl Router {
             if found { return Some(i) };
         }
         None
+    }
+
+    // TODO: Implement
+    fn route_security_check() {
+        // do nothing
     }
 
 }

@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, rc::Rc, cell::RefCell};
 
 use super::{types::CspPacket, CspId};
 
@@ -60,5 +60,9 @@ impl CspConnection {
     }
     pub fn conn_type(&self) -> ConnectionType {
         self.conn_type
+    }
+
+    pub fn enqueue(&mut self, packet: CspPacket) { 
+        self.rx_queue.push_back(packet);
     }
 }
