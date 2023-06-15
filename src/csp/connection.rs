@@ -62,7 +62,11 @@ impl CspConnection {
         self.conn_type
     }
 
-    pub fn enqueue(&mut self, packet: CspPacket) { 
+    pub fn push(&mut self, packet: CspPacket) { 
         self.rx_queue.push_back(packet);
+    }
+
+    pub fn pop(&mut self) -> Option<CspPacket> { 
+        self.rx_queue.pop_front()
     }
 }

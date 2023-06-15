@@ -55,4 +55,7 @@ impl fmt::Display for CspPacket {
 }
 
 
-
+pub type CspResult<T> = Result<T, CspError>; 
+pub enum CspError {
+    OutOfPorts,
+}

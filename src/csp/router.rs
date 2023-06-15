@@ -10,39 +10,34 @@ use super::connection::{CspConnection, ConnectionType, ConnectionState};
 use super::port::CspPort;
 use super::qfifo::CspQfifo;
 
-pub struct Router {
-    thread: Option<thread::JoinHandle<()>>,
-    state: Arc<RouterState>,
-}
+/**
+   @file
+
+   Routing table.
+
+   The routing table maps a CSP destination address to an interface (and optional a via address).
+
+   Normal routing: If the route's via address is set to #CSP_NO_VIA_ADDRESS, the packet will be sent directly to the destination address
+   specified in the CSP header, otherwise the packet will be sent the to the route's via address.
+*/
 
 #[derive(Default)]
-pub struct RouterState {
+pub struct Router {
     alive: sync::Arc<AtomicBool>,
     qfifo: Arc<Mutex<CspQfifo>>,
     ports: Arc<Mutex<Vec<CspPort>>>,
     connections: Vec<CspConnection>,
 }
 impl Router {
-    pub fn route_start(&mut self) {
-        self.thread = Some(thread::spawn(move || {
-            loop {
-                self.state.route_work();
-            }
-        }));
-    }
-}
-
-impl RouterState {
     pub fn new(qfifo: Arc<Mutex<CspQfifo>>, ports: Arc<Mutex<Vec<CspPort>>>) -> Self {
         // TODO: Implement
-        RouterState {
+        Router {
             alive: sync::Arc::new(AtomicBool::new(false)),
             qfifo,
             ports, 
             connections: Vec::new(),
         }
     }
-
 
     pub fn route_work(&mut self) {
         // 1. Get the next packet to route
@@ -94,7 +89,7 @@ impl RouterState {
 
         /* If connectionless, add the packet directly to the socket queue */
         if socket.conn_less() {
-            socket.enqueue(packet);
+            socket.push(packet);
             return;
         }
 
@@ -108,7 +103,7 @@ impl RouterState {
             /* Accept a new incoming connection */
             None => {
                 // security check
-                RouterState::route_security_check();
+                Router::route_security_check();
                 let sid = packet.id();
                 let did = CspId {
                     priority: sid.priority,
@@ -124,7 +119,7 @@ impl RouterState {
                 self.connections.last_mut().unwrap()
             },
         };
-        connection.enqueue(packet);
+        connection.push(packet);
     }
 
     fn find_connection_index(&self, id: &CspId) ->  Option<usize> {

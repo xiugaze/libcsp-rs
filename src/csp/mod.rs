@@ -9,12 +9,12 @@ use std::{collections::VecDeque, sync::{Arc, Mutex}, io, rc::Rc};
 use self::{
     router::Router, 
     connection::CspConnection,
-    types::CspPacket,
+    types::{CspPacket, CspResult},
     interfaces::{
         NextHop,
         //if_udp::UdpInterface, CspInterfaceState,
         if_loopback::{self, LoopbackInterface}, if_drain::DrainInterface
-    }, qfifo::CspQfifo, port::CspPort,
+    }, qfifo::CspQfifo, port::{CspPort, CspSocket},
 };
 
 pub mod tests;
@@ -35,7 +35,7 @@ pub struct Csp {
     pub interfaces: InterfaceList,
     pub num_interfaces: usize,
     router: router::Router,
-    ports: Arc<Mutex<Vec<CspPort>>>
+    pub ports: Arc<Mutex<Vec<CspPort>>>
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -98,6 +98,22 @@ impl Csp {
     pub fn read(&self) -> CspPacket {
         let (packet, _) = self.qfifo.lock().unwrap().pop();
         packet
+    }
+    pub fn route_work(&mut self) {
+        self.router.route_work();
+    }
+
+    /**
+        Binds a socket to a port, and returns the port index. 
+    */
+    pub fn bind(&mut self, socket: CspSocket) -> CspResult<usize> {
+        let port = CspPort {
+            state: port::CspPortState::Open,
+            socket,
+        };
+        let mut ports = self.ports.lock().unwrap();
+        ports.push(port);
+        Ok(ports.len())
     }
 }
 
