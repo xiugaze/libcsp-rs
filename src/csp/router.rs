@@ -23,7 +23,6 @@ use super::qfifo::CspQfifo;
 
 #[derive(Default)]
 pub struct Router {
-    alive: sync::Arc<AtomicBool>,
     qfifo: Arc<Mutex<CspQfifo>>,
     ports: Arc<Mutex<Vec<CspPort>>>,
     connections: Vec<CspConnection>,
@@ -32,7 +31,6 @@ impl Router {
     pub fn new(qfifo: Arc<Mutex<CspQfifo>>, ports: Arc<Mutex<Vec<CspPort>>>) -> Self {
         // TODO: Implement
         Router {
-            alive: sync::Arc::new(AtomicBool::new(false)),
             qfifo,
             ports, 
             connections: Vec::new(),
@@ -138,6 +136,10 @@ impl Router {
     // TODO: Implement
     fn route_security_check() {
         // do nothing
+    }
+
+    pub fn get_connection_pool(&mut self) -> &mut Vec<CspConnection> {
+        &mut self.connections
     }
 
 }

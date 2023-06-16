@@ -1,9 +1,3 @@
-
-#![allow(dead_code)]
-// TODO: For unimplemented!()
-#![allow(unreachable_code)]
-
-
 use std::{collections::VecDeque, sync::{Arc, Mutex}, io, rc::Rc};
 
 use self::{
@@ -31,7 +25,6 @@ pub type InterfaceList = VecDeque<Arc<dyn NextHop>>;
 
 pub struct Csp {
     pub qfifo: Arc<Mutex<CspQfifo>>,
-    pub connection_pool: Vec<CspConnection>,
     pub interfaces: InterfaceList,
     pub num_interfaces: usize,
     router: router::Router,
@@ -64,7 +57,6 @@ impl Default for Csp {
         let ports = Arc::new(Mutex::new(Vec::new()));
         Csp {
             qfifo: Arc::clone(&qfifo), 
-            connection_pool: Vec::new(),
             interfaces: VecDeque::new(),
             num_interfaces: 0,
             ports: Arc::clone(&ports),

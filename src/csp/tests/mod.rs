@@ -26,7 +26,7 @@ fn test_loopback_route_to_socket_conn_less() {
 
     Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
 
-    // initialize a server?
+    // conn_less = true
     let socket = CspSocket::new(true);
     csp.bind(socket);
     csp.route_work();
@@ -49,11 +49,11 @@ fn test_loopback_route_to_socket_conn() {
 
     Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
 
-    // initialize a server?
+    // conn_less = false
     let socket = CspSocket::new(false);
     csp.bind(socket);
     csp.route_work();
 
-    let rec = csp.connection_pool.get_mut(0).unwrap().pop().unwrap();
+    let rec = csp.router.get_connection_pool().get_mut(0).unwrap().pop().unwrap();
     assert_eq!(packet, rec)
 }
