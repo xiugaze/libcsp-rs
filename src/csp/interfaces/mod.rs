@@ -4,7 +4,7 @@ use std::io;
 
 use crate::csp::CspPacket;
 
-//pub mod if_udp;
+pub mod if_udp;
 pub mod if_loopback;
 pub mod if_drain;
 
