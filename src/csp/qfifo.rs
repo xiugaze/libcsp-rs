@@ -5,7 +5,7 @@ use super::{types::CspPacket, interfaces::{NextHop, CspInterfaceState}};
 #[derive(Debug)]
 pub struct QfifoElement {
     pub packet: CspPacket,
-    pub interface: Arc<dyn NextHop>,
+    pub interface: Arc<dyn NextHop+Send+Sync>,
 }
 
 #[derive(Default, Debug)]
@@ -20,7 +20,7 @@ impl CspQfifo {
         }
     }
 
-    pub fn push(&mut self, packet: CspPacket, interface: Arc<dyn NextHop>) -> io::Result<usize> {
+    pub fn push(&mut self, packet: CspPacket, interface: Arc<dyn NextHop+Send+Sync>) -> io::Result<usize> {
         let qfifo_element = QfifoElement {
             packet,
             interface: Arc::clone(&interface),
@@ -29,7 +29,7 @@ impl CspQfifo {
         return Ok(0)
     }
 
-    pub fn pop(&mut self) -> (CspPacket, Arc<dyn NextHop>) {
+    pub fn pop(&mut self) -> (CspPacket, Arc<dyn NextHop + Send + Sync>) {
         // removes from queue, qfifio_element is only owner of Arcs
         let qfifo_element = self.qfifo.pop_front().unwrap();
         

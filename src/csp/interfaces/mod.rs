@@ -1,3 +1,4 @@
+use core::fmt;
 use std::sync::Mutex;
 use std::sync::Arc;
 use std::io;
@@ -57,6 +58,18 @@ pub trait NextHop {
 }
 impl core::fmt::Debug for dyn NextHop {
      fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-            write!(f, "State: {:?}", self.get_state().lock().unwrap())
-        }
+        write!(f, "State: {:?}", self.get_state().lock().unwrap())
+    }
+}
+
+
+impl fmt::Debug for dyn NextHop + Send {
+     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "State: {:?}", self.get_state().lock().unwrap())
+    }
+}
+impl fmt::Debug for dyn NextHop + Send + Sync {
+     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "State: {:?}", self.get_state().lock().unwrap())
+    }
 }

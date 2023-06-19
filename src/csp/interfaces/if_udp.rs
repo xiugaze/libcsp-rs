@@ -1,52 +1,77 @@
+use crate::csp::interfaces::{CspInterfaceState, NextHop};
+use crate::csp::qfifo::CspQfifo;
+use crate::csp::types::CspPacket;
+use crate::csp::{types, utils, CspId};
 use std::collections::VecDeque;
 use std::io;
 use std::net::UdpSocket;
 use std::net::{IpAddr, Ipv4Addr};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use crate::csp::qfifo::CspQfifo;
-use crate::csp::types::CspPacket;
-use crate::csp::{utils, types, CspId};
-use crate::csp::interfaces::{
-    CspInterfaceState,
-    NextHop,
-};
 
 pub struct UdpInterface {
     iface: Arc<Mutex<CspInterfaceState>>,
-    state: Arc<UdpState>,
-    rx_thread: Option<JoinHandle<()>>
+    state: Arc<Mutex<UdpState>>,
+    rx_thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl UdpInterface {
-
     /**
        Construct a UDP interface from a hostname and port, a pointer to the global queue
-       and a `CspInterfaceState` struct. Fields are stored in an underlying UdpState struct 
-       in the `state` field. 
+       and a `CspInterfaceState` struct. Fields are stored in an underlying UdpState struct
+       in the `state` field.
     */
-    pub fn from(address: &str, port: u16, qfifo: &Arc<Mutex<CspQfifo>>, iface: CspInterfaceState) -> Self {
+    pub fn from(
+        address: &str,
+        port: u16,
+        qfifo: &Arc<Mutex<CspQfifo>>,
+        iface: CspInterfaceState,
+    ) -> Arc<Self> {
         let state = UdpState::from(address, port, qfifo);
-        UdpInterface {
+        let mut iface = Arc::new(UdpInterface {
             iface: Arc::new(Mutex::new(iface)),
-            state: Arc::new(state),
-            rx_thread: None,
-        }
+            state: Arc::new(Mutex::new(state)),
+            rx_thread: Mutex::new(None),
+        });
+        Arc::clone(&iface).start_rx_thread();
+        iface
     }
 
-    /**
-        Start the UDP Receive thread, which will accept incoming connections and 
-        store incoming packets in the global queue.
-    */
-    pub fn start_rx_thread(&mut self) {
-        let udp_state = Arc::clone(&self.state); 
-        self.rx_thread = Some(thread::spawn(move || {
-            let mut udp = udp_state;
-            udp.rx_loop();
-        }));
+    fn rx_work(self: Arc<Self>, socket: &UdpSocket) {
+        let mut buf: [u8; 256] = [0; 256];
+        let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
+        println!("Message from {src_addr}: ");
+        utils::dump_buffer(&buf, len);
+
+        self.state.lock().unwrap().push_qfifo(
+            CspPacket::new(len, buf, CspId::default()),
+            Arc::clone(&self),
+        );
     }
-    pub fn stop_rx_thread(&mut self) {
-        self.rx_thread.unwrap().join();
+
+    // /**
+    //     Start the UDP Receive thread, which will accept incoming connections and
+    //     store incoming packets in the global queue.
+    // */
+    pub fn start_rx_thread(self: Arc<Self>) {
+        let udp_state = Arc::clone(&self.state);
+        let clone = Arc::clone(&self);
+        *self.rx_thread.lock().unwrap() = Some(thread::spawn(move || {
+            println!("in thread");
+            let mut udp_state = udp_state.lock().unwrap();
+            loop {
+                println!("in loop");
+                let socket = UdpSocket::bind((udp_state.host, udp_state.rport))
+                    .expect("Error: Can't create socket");
+                let mut buf: [u8; 256] = [0; 256];
+                let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
+                println!("Message from {src_addr}: ");
+                utils::dump_buffer(&buf, len);
+
+                let packet = CspPacket::new(len, buf, CspId::default());
+                udp_state.push_qfifo(packet, Arc::clone(&clone));
+            }
+        }));
     }
 }
 
@@ -58,57 +83,33 @@ pub struct UdpState {
 }
 
 impl UdpState {
-
-    /** 
-        Construct a `UdpState` struct from a hostname, a port number, and a pointer 
-        to the global queue. 
+    /**
+        Construct a `UdpState` struct from a hostname, a port number, and a pointer
+        to the global queue.
     */
-    pub fn from(host: &str, port: u16, qfifo: Arc<Mutex<CspQfifo>>) -> Self {
+    pub fn from(host: &str, port: u16, qfifo: &Arc<Mutex<CspQfifo>>) -> Self {
         let host = host.parse::<IpAddr>().unwrap();
-        UdpState { 
-            host, 
-            lport: port, 
-            rport: port, 
+        let qfifo = Arc::clone(qfifo);
+        UdpState {
+            host,
+            lport: port,
+            rport: port,
             qfifo,
         }
     }
 
-    fn rx_work(&mut self, socket: &UdpSocket) {
-        let mut buf: [u8; 256] = [0; 256];
-        let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
-        println!("Message from {src_addr}: ");
-        utils::dump_buffer(&buf, len);
-
-        self.push_qfifo(CspPacket::new(len, buf, CspId::default()));
-    }
-
-    fn push_qfifo(&mut self, packet: CspPacket) {
-        self.qfifo.lock().unwrap().push(packet);
-    }
-
-    // TODO: Unbounded loops
-    pub fn rx_loop(&mut self) {
-        // tuple of (IpAddr, u16) implements ToSocketAddrs
-        let socket = UdpSocket::bind( (self.host, self.rport) ).expect("Error: Can't create socket");
-        for _ in 0..6 {
-            self.rx_work(&socket);
-        }
+    fn push_qfifo(&mut self, packet: CspPacket, iface: Arc<UdpInterface>) {
+        self.qfifo.lock().unwrap().push(packet, iface);
     }
 }
 
 impl NextHop for UdpInterface {
-    // fn nexthop(&self, packet: CspPacket) -> io::Result<usize>{
-    //     let state = self.state.lock().unwrap();
-    //     let socket = UdpSocket::bind((state.host, state.lport)).expect("Error: Can't bind to local socket");
-    //     let buf = packet.make_header();
-    //     socket.send(&buf)
-    //
-    // }
     fn nexthop(self: Arc<Self>, packet: CspPacket) -> io::Result<usize> {
-        let mut queue = self.state.qfifo.lock().unwrap();
-        let iface = Arc::clone(&self);
-        let socket = UdpSocket::bind((state.host, state.lport)).expect("Error: Can't bind to local socket");
-        let buf = packet.make_header();
+        let lock = self.state.lock().unwrap();
+        let socket =
+            UdpSocket::bind((lock.host, 8080)).expect("Error: Can't bind to local socket");
+        socket.connect(("127.0.0.1", 35535));
+        let buf = packet.make_buffer();
         socket.send(&buf)
     }
 
@@ -116,5 +117,4 @@ impl NextHop for UdpInterface {
         let iface = Arc::clone(&self.iface);
         iface
     }
-
 }

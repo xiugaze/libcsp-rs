@@ -7,14 +7,13 @@ use self::{
     interfaces::{
         NextHop,
         //if_udp::UdpInterface, CspInterfaceState,
-        if_loopback::{self, LoopbackInterface}, if_drain::DrainInterface
+        if_loopback::{self, LoopbackInterface}, if_drain::DrainInterface, if_udp::UdpInterface, CspInterfaceState
     }, qfifo::CspQfifo, port::{CspPort, CspSocket},
 };
 
 pub mod tests;
 pub mod utils;
 pub mod interfaces;
-pub mod buffer;
 pub mod types;
 pub mod router;
 pub mod connection;
@@ -72,6 +71,7 @@ impl Csp {
             // TODO: Take in an Arc to self, and pass it in
             "loopback" => Arc::new(LoopbackInterface::init(&qfifo, self.num_interfaces)),
             "drain" => Arc::new(DrainInterface::new()),
+            "udp" => UdpInterface::from("127.0.0.1", 8080, &qfifo, CspInterfaceState::default()),
             _ => panic!("Error: invalid interface name (may not exist)"),
         };
         self.interfaces.push_back(iface);

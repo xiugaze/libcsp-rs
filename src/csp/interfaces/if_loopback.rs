@@ -48,4 +48,5 @@ impl NextHop for LoopbackInterface {
         Arc::clone(&self.iface)
     }
 }
+unsafe impl Send for LoopbackInterface {}
 

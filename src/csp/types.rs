@@ -29,7 +29,7 @@ impl CspPacket {
     pub fn len(&self) -> u16 {
         self.length
     }
-    pub fn make_header(self) -> Vec<u8> {
+    pub fn make_buffer(self) -> Vec<u8> {
         let mut header = self.header.to_vec();
         let mut data = self.data;
         header.append(&mut data);
