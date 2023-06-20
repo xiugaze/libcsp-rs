@@ -29,13 +29,12 @@ impl CspQfifo {
         return Ok(0)
     }
 
-    pub fn pop(&mut self) -> (CspPacket, Arc<dyn NextHop + Send + Sync>) {
+    pub fn pop(&mut self) -> Option<(CspPacket, Arc<dyn NextHop + Send + Sync>)> {
         // removes from queue, qfifio_element is only owner of Arcs
-        let qfifo_element = self.qfifo.pop_front().unwrap();
-        
-        let packet = qfifo_element.packet;          // moves out of
-        let interface = qfifo_element.interface;    // moves out of
-        (packet, interface)
-    }   // qfifo_element dropped here
+        match self.qfifo.pop_front() {
+            Some(qfifo_element) => Some((qfifo_element.packet, qfifo_element.interface)),
+            None => None
+        }
+    }   
 }
 

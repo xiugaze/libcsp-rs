@@ -37,28 +37,30 @@ impl UdpInterface {
         iface
     }
 
-    fn rx_work(self: Arc<Self>, socket: &UdpSocket) {
-        let mut buf: [u8; 256] = [0; 256];
-        let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
-        println!("Message from {src_addr}: ");
-        utils::dump_buffer(&buf, len);
-
-        self.state.lock().unwrap().push_qfifo(
-            CspPacket::new(len, buf, CspId::default()),
-            Arc::clone(&self),
-        );
-    }
-
-    // /**
-    //     Start the UDP Receive thread, which will accept incoming connections and
-    //     store incoming packets in the global queue.
-    // */
+    // fn rx_work(self: Arc<Self>, socket: &UdpSocket) {
+    //     let mut buf: [u8; 256] = [0; 256];
+    //     let (len, src_addr) = socket.recv_from(&mut buf).unwrap();
+    //     println!("Message from {src_addr}: ");
+    //     utils::dump_buffer(&buf, len);
+    //
+    //     let result = self.state.lock().unwrap().push_qfifo(
+    //         CspPacket::new(len, buf, CspId::default()),
+    //         Arc::clone(&self),
+    //     );
+    // }
+    //
+    /**
+        Start the UDP Receive thread, which will accept incoming connections and
+        store incoming packets in the global queue.
+    */
     pub fn start_rx_thread(self: Arc<Self>) {
         let udp_state = Arc::clone(&self.state);
+        let iface_state = Arc::clone(&self.iface);
         let clone = Arc::clone(&self);
         *self.rx_thread.lock().unwrap() = Some(thread::spawn(move || {
             println!("in thread");
             let mut udp_state = udp_state.lock().unwrap();
+            //let mut iface_state = iface_state.lock().unwrap();
             loop {
                 println!("in loop");
                 let socket = UdpSocket::bind((udp_state.host, udp_state.rport))
@@ -69,7 +71,13 @@ impl UdpInterface {
                 utils::dump_buffer(&buf, len);
 
                 let packet = CspPacket::new(len, buf, CspId::default());
-                udp_state.push_qfifo(packet, Arc::clone(&clone));
+                // NOTE: I don't think this is needed
+                match udp_state.push_qfifo(packet, Arc::clone(&clone)) {
+                    Ok(_) => {
+                        println!("UDP Pushed packet");
+                    },
+                    Err(_) => println!("UDP Failed to push packet"),
+                }
             }
         }));
     }
@@ -98,8 +106,8 @@ impl UdpState {
         }
     }
 
-    fn push_qfifo(&mut self, packet: CspPacket, iface: Arc<UdpInterface>) {
-        self.qfifo.lock().unwrap().push(packet, iface);
+    fn push_qfifo(&mut self, packet: CspPacket, iface: Arc<UdpInterface>) -> Result<usize, io::Error> {
+        self.qfifo.lock().unwrap().push(packet, iface)
     }
 }
 

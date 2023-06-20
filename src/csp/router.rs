@@ -5,6 +5,7 @@ use std::thread::JoinHandle;
 use std::{sync, thread};
 use std::sync::atomic::AtomicBool;
 
+use super::types::{CspResult, CspError};
 use super::{Csp, CspId};
 use super::connection::{CspConnection, ConnectionType, ConnectionState};
 use super::port::CspPort;
@@ -37,10 +38,17 @@ impl Router {
         }
     }
 
-    pub fn route_work(&mut self) {
+    // TODO: Fix error types/Ok("message")? 
+    pub fn route_work(&mut self) -> CspResult<()>{
         // 1. Get the next packet to route
         // Removes the packet
-        let (packet, iface) = self.qfifo.lock().unwrap().pop();
+        
+        // FIX: This is where the UDP test fails, there's nothing in the queue
+        let (packet, iface) = match self.qfifo.lock().unwrap().pop() {
+            Some((packet, iface)) => (packet, iface),
+            // Return error if the queue is empty
+            None => return Err(CspError::EmptyQfifo),
+        };
 
         // increment received packets
         iface.get_state().lock().unwrap().increment_rx();
@@ -51,7 +59,7 @@ impl Router {
         // if the message isn't to me, send the mesage to the correct interface
         if !is_to_me {
             Csp::send_direct(iface, packet);
-            return;
+            return Ok(());
         }
 
         // Ok, now we're handling callbacks
@@ -88,7 +96,7 @@ impl Router {
         /* If connectionless, add the packet directly to the socket queue */
         if socket.conn_less() {
             socket.push(packet);
-            return;
+            return Ok(());
         }
 
         let index = self.find_connection_index(packet.id());
@@ -118,6 +126,7 @@ impl Router {
             },
         };
         connection.push(packet);
+        Ok(())
     }
 
     fn find_connection_index(&self, id: &CspId) ->  Option<usize> {

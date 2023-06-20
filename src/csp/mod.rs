@@ -88,11 +88,11 @@ impl Csp {
     }
 
     pub fn read(&self) -> CspPacket {
-        let (packet, _) = self.qfifo.lock().unwrap().pop();
+        let (packet, _) = self.qfifo.lock().unwrap().pop().unwrap();
         packet
     }
-    pub fn route_work(&mut self) {
-        self.router.route_work();
+    pub fn route_work(&mut self) -> CspResult<()> {
+        self.router.route_work()
     }
 
     /**

@@ -33,6 +33,12 @@ impl CspInterfaceState {
     pub fn increment_rx(&mut self) {
         self.rx += 1;
     }
+    pub fn get_tx(&self) -> u32 {
+        self.tx
+    }
+    pub fn get_rx(&self) -> u32 {
+        self.rx
+    }
     pub fn address(&self) -> u16 {
         self.address
     }
