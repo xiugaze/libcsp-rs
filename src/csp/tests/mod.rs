@@ -81,7 +81,7 @@ fn test_udp_rec() {
     // interface lport rport
     csp.add_interface("udp 8080 0");
 
-    // server CSP port
+    // server CSP port (conn_less = false)
     let socket = CspSocket::new(false);
     csp.bind(socket);
 
@@ -126,6 +126,18 @@ fn test_udp_send() {
 
     let rec = CspPacket::new(len, buf, CspId::default());
     let packet = CspPacket::new(256, utils::test_buffer(), CspId::default());
-
-    assert_eq!(packet, rec)
+    assert_eq!(packet, rec);
 }
+
+
+#[test]
+fn test_udp_rec_send() {
+    // csp
+    // add udp
+    // rec packet that says to send back on interface
+    // nexthop
+    // rec on other socket
+    // compare
+
+}
+

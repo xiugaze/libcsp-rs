@@ -99,7 +99,6 @@ impl NextHop for UdpInterface {
     }
 
     fn get_state(&self) -> Arc<Mutex<CspInterfaceState>> {
-        let iface = Arc::clone(&self.iface);
-        iface
+        Arc::clone(&self.iface)
     }
 }

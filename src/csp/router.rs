@@ -1,15 +1,15 @@
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::{sync, thread};
-use std::sync::atomic::AtomicBool;
 
-use super::types::{CspResult, CspError};
-use super::{Csp, CspId};
-use super::connection::{CspConnection, ConnectionType, ConnectionState};
+use super::connection::{ConnectionState, ConnectionType, CspConnection};
 use super::port::CspPort;
 use super::qfifo::CspQfifo;
+use super::types::{CspError, CspResult};
+use super::{Csp, CspId};
 
 /**
    @file
@@ -33,17 +33,13 @@ impl Router {
         // TODO: Implement
         Router {
             qfifo,
-            ports, 
+            ports,
             connections: Vec::new(),
         }
     }
 
-    // TODO: Fix error types/Ok("message")? 
-    pub fn route_work(&mut self) -> CspResult<()>{
-        // 1. Get the next packet to route
-        // Removes the packet
-        
-        // FIX: This is where the UDP test fails, there's nothing in the queue
+    // TODO: Fix error types/Ok("message")?
+    pub fn route_work(&mut self) -> CspResult<()> {
         let (packet, iface) = match self.qfifo.lock().unwrap().pop() {
             Some((packet, iface)) => (packet, iface),
             // Return error if the queue is empty
@@ -52,12 +48,12 @@ impl Router {
 
         // increment received packets
         iface.get_state().lock().unwrap().increment_rx();
-        
-        let is_to_me = packet.id().destination == 
-            iface.get_state().lock().unwrap().address();
+
+        let is_to_me: bool = packet.id().destination == iface.get_state().lock().unwrap().address();
 
         // if the message isn't to me, send the mesage to the correct interface
         if !is_to_me {
+            // TODO: Handle this result
             Csp::send_direct(iface, packet);
             return Ok(());
         }
@@ -86,7 +82,7 @@ impl Router {
             } else {
                 security check
             }
-            
+
             // finally
             connection.add_to_rx_queue(packet)
 
@@ -102,10 +98,10 @@ impl Router {
         let index = self.find_connection_index(packet.id());
         let connection: &mut CspConnection = match index {
             /* Find an existing connection */
-            Some(index) =>  {
+            Some(index) => {
                 let conn = &mut self.connections[index];
                 conn
-            },
+            }
             /* Accept a new incoming connection */
             None => {
                 // security check
@@ -123,13 +119,13 @@ impl Router {
                 let conn = CspConnection::from_ids(sid.clone(), did, ConnectionType::Server);
                 self.connections.push(conn);
                 self.connections.last_mut().unwrap()
-            },
+            }
         };
         connection.push(packet);
         Ok(())
     }
 
-    fn find_connection_index(&self, id: &CspId) ->  Option<usize> {
+    fn find_connection_index(&self, id: &CspId) -> Option<usize> {
         for (i, conn) in self.connections.iter().enumerate() {
             let conn_status = (conn.id_in().dport, conn.id_in().sport, conn.id_in().source);
             let id_status = (id.dport, id.sport, id.source);
@@ -137,7 +133,9 @@ impl Router {
                 ConnectionType::Client => conn_status.0 == id_status.0,
                 ConnectionType::Server => conn_status == id_status,
             };
-            if found { return Some(i) };
+            if found {
+                return Some(i);
+            };
         }
         None
     }
@@ -150,5 +148,4 @@ impl Router {
     pub fn get_connection_pool(&mut self) -> &mut Vec<CspConnection> {
         &mut self.connections
     }
-
 }

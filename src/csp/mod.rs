@@ -1,16 +1,13 @@
 use std::{
     collections::VecDeque,
     io,
-    rc::Rc,
     sync::{Arc, Mutex},
 };
 
 use self::{
-    connection::CspConnection,
     interfaces::{
         if_drain::DrainInterface,
-        //if_udp::UdpInterface, CspInterfaceState,
-        if_loopback::{self, LoopbackInterface},
+        if_loopback::{LoopbackInterface},
         if_udp::UdpInterface,
         CspInterfaceState,
         NextHop,
@@ -89,6 +86,7 @@ impl Csp {
                 &qfifo,
                 CspInterfaceState::default(),
             ),
+
             _ => panic!("Error: invalid interface name (may not exist)"),
         };
         self.interfaces.push_back(iface);
@@ -108,6 +106,7 @@ impl Csp {
         let (packet, _) = self.qfifo.lock().unwrap().pop().unwrap();
         packet
     }
+
     pub fn route_work(&mut self) -> CspResult<()> {
         self.router.route_work()
     }
