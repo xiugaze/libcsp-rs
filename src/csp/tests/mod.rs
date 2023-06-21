@@ -2,7 +2,7 @@ use crate::csp::types::CspError;
 
 #[cfg(test)]
 use super::*;
-use std::{net::UdpSocket, time::Duration, thread};
+use std::{net::UdpSocket, thread, time::Duration};
 
 #[test]
 fn test_loopback_send_direct() {
@@ -78,9 +78,8 @@ fn test_udp_rec() {
     let mut csp = Csp::default();
 
     // RX thread starts here
-    csp.add_interface("udp");
-
-    // client UDP port
+    // interface lport rport
+    csp.add_interface("udp 8080 0");
 
     // server CSP port
     let socket = CspSocket::new(false);
@@ -97,7 +96,7 @@ fn test_udp_rec() {
         let client = UdpSocket::bind(("127.0.0.1", 0)).expect("Error: Could not bind to address");
         client.send_to(&buffer, ("127.0.0.1", 8080));
         sent = csp.route_work();
-    };
+    }
 
     let rec = csp
         .router
@@ -113,21 +112,20 @@ fn test_udp_rec() {
 #[test]
 fn test_udp_send() {
     let mut csp = Csp::default();
-    csp.add_interface("udp");
+    csp.add_interface("udp 8080 35535");
     println!("test started");
 
+    let socket = UdpSocket::bind(("127.0.0.1", 35535)).unwrap();
+    Csp::send_direct(
+        Arc::clone(csp.interfaces.get(0).unwrap()),
+        CspPacket::new(256, utils::test_buffer(), CspId::default()),
+    );
 
-    Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), CspPacket::new(256, utils::test_buffer(), CspId::default()));
+    let mut buf = [0; 256];
+    let len = socket.recv(&mut buf).unwrap();
 
-    // let server = thread::spawn(|| {
-        let sock = UdpSocket::bind(("127.0.0.1", 35535)).unwrap();
-        sock.connect(("127.0.0.1", 8080));
-        let mut buf = [0; 256];
-        let len = sock.recv(&mut buf).unwrap();
-        println!("{buf:?}");
-    // });
+    let rec = CspPacket::new(len, buf, CspId::default());
+    let packet = CspPacket::new(256, utils::test_buffer(), CspId::default());
 
-
-    // server.join();
-    // 
+    assert_eq!(packet, rec)
 }

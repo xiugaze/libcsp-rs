@@ -1,24 +1,34 @@
-use std::{collections::VecDeque, sync::{Arc, Mutex}, io, rc::Rc};
-
-use self::{
-    router::Router, 
-    connection::CspConnection,
-    types::{CspPacket, CspResult},
-    interfaces::{
-        NextHop,
-        //if_udp::UdpInterface, CspInterfaceState,
-        if_loopback::{self, LoopbackInterface}, if_drain::DrainInterface, if_udp::UdpInterface, CspInterfaceState
-    }, qfifo::CspQfifo, port::{CspPort, CspSocket},
+use std::{
+    collections::VecDeque,
+    io,
+    rc::Rc,
+    sync::{Arc, Mutex},
 };
 
-pub mod tests;
-pub mod utils;
-pub mod interfaces;
-pub mod types;
-pub mod router;
+use self::{
+    connection::CspConnection,
+    interfaces::{
+        if_drain::DrainInterface,
+        //if_udp::UdpInterface, CspInterfaceState,
+        if_loopback::{self, LoopbackInterface},
+        if_udp::UdpInterface,
+        CspInterfaceState,
+        NextHop,
+    },
+    port::{CspPort, CspSocket},
+    qfifo::CspQfifo,
+    router::Router,
+    types::{CspPacket, CspResult},
+};
+
 pub mod connection;
-pub mod qfifo;
+pub mod interfaces;
 pub mod port;
+pub mod qfifo;
+pub mod router;
+pub mod tests;
+pub mod types;
+pub mod utils;
 
 pub type InterfaceList = VecDeque<Arc<dyn NextHop>>;
 
@@ -27,16 +37,16 @@ pub struct Csp {
     pub interfaces: InterfaceList,
     pub num_interfaces: usize,
     router: router::Router,
-    pub ports: Arc<Mutex<Vec<CspPort>>>
+    pub ports: Arc<Mutex<Vec<CspPort>>>,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CspId {
-    priority: u8, 
-    flags: u8, 
-    source: u16, 
+    priority: u8,
+    flags: u8,
+    source: u16,
     destination: u16,
-    dport: u8, 
+    dport: u8,
     sport: u8,
 }
 
@@ -47,7 +57,7 @@ impl CspId {
 }
 
 pub enum InterfaceType {
-    Udp, 
+    Udp,
 }
 
 impl Default for Csp {
@@ -55,7 +65,7 @@ impl Default for Csp {
         let qfifo = Arc::new(Mutex::new(CspQfifo::new()));
         let ports = Arc::new(Mutex::new(Vec::new()));
         Csp {
-            qfifo: Arc::clone(&qfifo), 
+            qfifo: Arc::clone(&qfifo),
             interfaces: VecDeque::new(),
             num_interfaces: 0,
             ports: Arc::clone(&ports),
@@ -67,11 +77,18 @@ impl Default for Csp {
 impl Csp {
     pub fn add_interface(&mut self, iface_type: &str) {
         let qfifo = Arc::clone(&self.qfifo);
-        let iface: Arc<dyn NextHop> = match iface_type {
+        let strings: Vec<&str> = iface_type.split(" ").collect();
+        let iface: Arc<dyn NextHop> = match strings[0] {
             // TODO: Take in an Arc to self, and pass it in
             "loopback" => Arc::new(LoopbackInterface::init(&qfifo, self.num_interfaces)),
             "drain" => Arc::new(DrainInterface::new()),
-            "udp" => UdpInterface::from("127.0.0.1", 8080, &qfifo, CspInterfaceState::default()),
+            "udp" => UdpInterface::from(
+                "127.0.0.1",
+                strings[1].parse::<u16>().unwrap(),
+                strings[2].parse::<u16>().unwrap(),
+                &qfifo,
+                CspInterfaceState::default(),
+            ),
             _ => panic!("Error: invalid interface name (may not exist)"),
         };
         self.interfaces.push_back(iface);
@@ -96,7 +113,7 @@ impl Csp {
     }
 
     /**
-        Binds a socket to a port, and returns the port index. 
+        Binds a socket to a port, and returns the port index.
     */
     pub fn bind(&mut self, socket: CspSocket) -> CspResult<usize> {
         let port = CspPort {
@@ -108,4 +125,3 @@ impl Csp {
         Ok(ports.len())
     }
 }
-
