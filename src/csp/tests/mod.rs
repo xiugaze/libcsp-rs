@@ -2,7 +2,11 @@ use crate::csp::types::CspError;
 
 #[cfg(test)]
 use super::*;
-use std::{net::UdpSocket, thread, time::Duration};
+use crate::{
+    csp::{self, types, utils, CspId, CspPacket, CspResult, CspSocket},
+    Csp,
+};
+use std::{net::UdpSocket, sync::Arc, thread, time::Duration};
 
 #[test]
 fn test_loopback_send_direct() {
@@ -83,7 +87,7 @@ fn test_udp_rec() {
 
     // server CSP port (conn_less = false)
     let socket = CspSocket::new(false);
-    csp.bind(socket);
+    let _ = csp.bind(socket);
 
     // buffer for packet and UDP send
     let buffer = utils::test_buffer();
@@ -92,21 +96,35 @@ fn test_udp_rec() {
     // send packet as [u8; 256]
     // HACK: "race condition" occurs on route_work() before UDP thread is done
     let mut sent: Result<(), CspError> = CspResult::Err(types::CspError::EmptyQfifo);
-    while let Err(_) = sent {
+
+    let sender_thread = thread::spawn(move || {
+        println!("Starting sender thread");
         let client = UdpSocket::bind(("127.0.0.1", 0)).expect("Error: Could not bind to address");
-        client.send_to(&buffer, ("127.0.0.1", 8080));
-        sent = csp.route_work();
+
+        println!("Sender thread starting send");
+        while sent.is_err() {
+            client.send_to(&buffer, ("127.0.0.1", 8080)).unwrap();
+        }
+        println!("Sender thread done");
+    });
+
+    println!("Waiting for route_work success");
+    loop {
+        let Ok(_sent) = csp.route_work() else {
+            continue;
+        };
+        println!("route_work succeeded");
+
+        let rec = csp
+            .router
+            .get_connection_pool()
+            .get_mut(0)
+            .unwrap()
+            .pop()
+            .unwrap();
+
+        assert_eq!(packet, rec)
     }
-
-    let rec = csp
-        .router
-        .get_connection_pool()
-        .get_mut(0)
-        .unwrap()
-        .pop()
-        .unwrap();
-
-    assert_eq!(packet, rec)
 }
 
 #[test]
@@ -129,7 +147,14 @@ fn test_udp_send() {
     assert_eq!(packet, rec);
 }
 
-
+/* #[test]
+fn test_udp() {
+    let sender = thread::spawn(|| test_udp_send());
+    let receiver = thread::spawn(|| test_udp_rec());
+    sender.join().unwrap();
+    receiver.join().unwrap();
+}
+ */
 #[test]
 fn test_udp_rec_send() {
     // csp
@@ -138,6 +163,4 @@ fn test_udp_rec_send() {
     // nexthop
     // rec on other socket
     // compare
-
 }
-
