@@ -100,9 +100,7 @@ fn test_udp_rec() {
     let sender_thread = thread::spawn(move || {
         let client = UdpSocket::bind(("127.0.0.1", 0)).expect("Error: Could not bind to address");
 
-        while sent.is_err() {
-            client.send_to(&buffer, ("127.0.0.1", 8080)).unwrap();
-        }
+        client.send_to(&buffer, ("127.0.0.1", 8080)).unwrap();
     });
 
     loop {
@@ -121,6 +119,8 @@ fn test_udp_rec() {
         assert_eq!(packet, rec);
         break;
     }
+
+    sender_thread.join().unwrap();
 }
 
 #[test]
