@@ -98,22 +98,17 @@ fn test_udp_rec() {
     let mut sent: Result<(), CspError> = CspResult::Err(types::CspError::EmptyQfifo);
 
     let sender_thread = thread::spawn(move || {
-        println!("Starting sender thread");
         let client = UdpSocket::bind(("127.0.0.1", 0)).expect("Error: Could not bind to address");
 
-        println!("Sender thread starting send");
         while sent.is_err() {
             client.send_to(&buffer, ("127.0.0.1", 8080)).unwrap();
         }
-        println!("Sender thread done");
     });
 
-    println!("Waiting for route_work success");
     loop {
         let Ok(_sent) = csp.route_work() else {
             continue;
         };
-        println!("route_work succeeded");
 
         let rec = csp
             .router
@@ -123,15 +118,15 @@ fn test_udp_rec() {
             .pop()
             .unwrap();
 
-        assert_eq!(packet, rec)
+        assert_eq!(packet, rec);
+        break;
     }
 }
 
 #[test]
 fn test_udp_send() {
     let mut csp = Csp::default();
-    csp.add_interface("udp 8080 35535");
-    println!("test started");
+    csp.add_interface("udp 8090 35535");
 
     let socket = UdpSocket::bind(("127.0.0.1", 35535)).unwrap();
     Csp::send_direct(
