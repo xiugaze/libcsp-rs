@@ -2,12 +2,12 @@ use std::collections::VecDeque;
 
 use super::types::CspPacket;
 
-
 pub enum CspPortState {
     Closed,
-    Open, 
+    Open,
     // Callback,
 }
+
 pub struct CspPort {
     pub state: CspPortState,
     pub socket: CspSocket,
@@ -36,10 +36,21 @@ pub struct CspSocket {
     conn_less: bool,
 }
 impl CspSocket {
-    pub fn new(conn_less: bool) -> CspSocket {
-        CspSocket { rx_queue: VecDeque::new(), conn_less }
+    pub fn conn_less() -> CspSocket {
+        CspSocket {
+            rx_queue: VecDeque::new(),
+            conn_less: true,
+        }
     }
-    pub fn conn_less(&self) -> bool {
+
+    pub fn conn() -> CspSocket {
+        CspSocket {
+            rx_queue: VecDeque::new(),
+            conn_less: false,
+        }
+    }
+
+    pub fn is_conn_less(&self) -> bool {
         self.conn_less
     }
 
@@ -56,7 +67,6 @@ impl CspSocket {
             print!("{packet}");
         }
     }
-
 }
 
 // pub struct

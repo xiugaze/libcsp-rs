@@ -18,7 +18,7 @@ pub mod if_drain;
 */
 #[derive(Default, Debug)]
 pub struct CspInterfaceState {
-    address: u16,           // address on this submet
+    address: u16,           // address on this subnet
     netmask: u16,           // subnet mask
     name: String,           // name of interface
     tx: u32,                // successfully transmitted packets

@@ -49,6 +49,9 @@ impl Router {
         // increment received packets
         iface.get_state().lock().unwrap().increment_rx();
 
+        /*
+            Interface has an address field which is?
+        */
         let is_to_me: bool = packet.id().destination == iface.get_state().lock().unwrap().address();
 
         // if the message isn't to me, send the mesage to the correct interface
@@ -58,39 +61,19 @@ impl Router {
             return Ok(());
         }
 
-        // Ok, now we're handling callbacks
         /*
+            TODO: Handle callbacks
             let callback = get_callback(packet->id.dport);
             if callback not null {
                 callback(packet)
-            }
-            return
+            } return
         */
 
-        // Ok, now we're handling port stuff
-        /*
-            socket = csp_port_get_socket(packet->id.dport);
-            if(socket is connectionless) {
-                socket.add_to_rx(packet)
-                return
-            }
-
-            connection = get_connection(packet->id)
-            if !exists {
-               // accept a new incoming connection
-               connection = new connection(packet-> id, make idout)
-            } else {
-                security check
-            }
-
-            // finally
-            connection.add_to_rx_queue(packet)
-
-        */
+        // TODO: Make this better
         let socket = &mut self.ports.lock().unwrap()[packet.id().dport as usize].socket;
 
         /* If connectionless, add the packet directly to the socket queue */
-        if socket.conn_less() {
+        if socket.is_conn_less() {
             socket.push(packet);
             return Ok(());
         }

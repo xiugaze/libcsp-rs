@@ -42,7 +42,7 @@ pub fn test_buffer() -> [u8; 256] {
     let mut buffer: [u8; 256] = [0; 256];
 
     for i in 0..6 {
-        buffer[i] = 0xFF;
+        buffer[i] = 0xF0 + i as u8;
     }
 
     let mut counter: u8 = 0x00;

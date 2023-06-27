@@ -34,7 +34,7 @@ fn test_loopback_route_to_socket_conn_less() {
     Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
 
     // conn_less = true
-    let socket = CspSocket::new(true);
+    let socket = CspSocket::conn_less();
     csp.bind(socket);
     csp.route_work();
 
@@ -63,7 +63,7 @@ fn test_loopback_route_to_socket_conn() {
     Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
 
     // conn_less = false
-    let socket = CspSocket::new(false);
+    let socket = CspSocket::conn();
     csp.bind(socket);
     csp.route_work();
 
@@ -86,7 +86,7 @@ fn test_udp_rec() {
     csp.add_interface("udp 8080 0");
 
     // server CSP port (conn_less = false)
-    let socket = CspSocket::new(false);
+    let socket = CspSocket::conn();
     let _ = csp.bind(socket);
 
     // buffer for packet and UDP send
@@ -148,8 +148,8 @@ fn test_udp() {
     let receiver = thread::spawn(|| test_udp_rec());
     sender.join().unwrap();
     receiver.join().unwrap();
-}
- */
+} */
+
 #[test]
 fn test_udp_rec_send() {
     // csp
