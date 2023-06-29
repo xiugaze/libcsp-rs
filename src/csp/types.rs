@@ -8,9 +8,9 @@ use super::{
 };
 
 
-const HEADER_SIZE: u16 = 6;
-const PRIO_MASK: u16        = 6;
-const PRIO_OFFSET: usize    = 6;
+const HEADER_SIZE: u16      = 6;
+const PRIO_MASK: u8        = 0x03;
+const PRIO_OFFSET: usize    = 46;
 const DST_MASK: u16         = 0x3FFF;
 const DST_OFFSET: usize     = 32;
 const SRC_MASK: u16         = 0x3FFF;
@@ -21,7 +21,6 @@ const SPORT_MASK: u8        = 0x3F;
 const SPORT_OFFSET: usize   = 6;
 const FLAGS_MASK: u8        = 0x3F;
 const FLAGS_OFFSET: usize   = 0;
-
 
 
 #[repr(C)]
@@ -62,24 +61,23 @@ impl CspPacket {
         &self.id
     }
 
-    fn strip_id(data: [u8; 8]) -> CspId {
+    pub fn strip_id(data: [u8; 8]) -> CspId {
         // 48 bits (6 bytes of data) to build the ID
         // Network Byte order is Big-endian, so we need
         // be64toh (Big Endian 64 unsigned to host architecture)
-        let id = Cursor::new(data).read_u64::<BigEndian>().unwrap();
-        println!("{id:#016X}");
+        let id: u64 = Cursor::new(data).read_u64::<BigEndian>().unwrap() as u64;
+        println!("{id:#018x}");
         CspId {
-            priority: ((id >> 46) & 0x3) as u8,
-            destination: ((id >> 32) & 0x3FFF) as u16,
-
-        
+            priority: ((id >> PRIO_OFFSET) as u8 & PRIO_MASK),
+            flags: ((id >> FLAGS_OFFSET) as u8 & FLAGS_MASK),
+            source: ((id >> SRC_OFFSET) as u16 & SRC_MASK),
+            destination: ((id >> DST_OFFSET) as u16 & DST_MASK),
+            dport: ((id >> DPORT_OFFSET) as u8 & DPORT_MASK),
+            sport: ((id >> SPORT_OFFSET) as u8 & SPORT_MASK),
         }
-        
-        
-
-
     }
 }
+
 impl fmt::Display for CspPacket {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let bytes = &self.data[0..5];
