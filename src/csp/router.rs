@@ -74,7 +74,7 @@ impl Router {
 
         /* If connectionless, add the packet directly to the socket queue */
         if socket.is_conn_less() {
-            socket.push(packet);
+            socket.add_connection(packet);
             return Ok(());
         }
 

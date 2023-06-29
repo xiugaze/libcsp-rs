@@ -45,7 +45,7 @@ fn test_loopback_route_to_socket_conn_less() {
         .get_mut(0)
         .unwrap()
         .get_socket()
-        .pop()
+        .remove_connection()
         .unwrap();
     assert_eq!(packet, rec)
 }

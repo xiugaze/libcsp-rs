@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use super::types::CspPacket;
+use super::{types::CspPacket, connection::CspConnection};
 
 pub enum CspPortState {
     Closed,
@@ -32,20 +32,22 @@ impl CspPort {
 // #define CSP_SO_CONN_LESS		0x0100 //!< Enable Connection Less mode
 // #define CSP_SO_SAME			0x8000 // Copy opts from incoming packet only apllies to csp_sendto_reply()
 pub struct CspSocket {
-    rx_queue: VecDeque<CspPacket>,
+    connections: VecDeque<CspConnection>,
     conn_less: bool,
 }
+
 impl CspSocket {
+
     pub fn conn_less() -> CspSocket {
         CspSocket {
-            rx_queue: VecDeque::new(),
+            connections: VecDeque::new(),
             conn_less: true,
         }
     }
 
     pub fn conn() -> CspSocket {
         CspSocket {
-            rx_queue: VecDeque::new(),
+            connections: VecDeque::new(),
             conn_less: false,
         }
     }
@@ -54,18 +56,12 @@ impl CspSocket {
         self.conn_less
     }
 
-    pub fn push(&mut self, packet: CspPacket) {
-        self.rx_queue.push_back(packet);
-    }
-    pub fn pop(&mut self) -> Option<CspPacket> {
-        self.rx_queue.pop_front()
+    pub fn add_connection(&mut self, conn: CspConnection) {
+        self.connections.push_back(conn);
     }
 
-    // TODO: This is just a print function, should probably do something more useful
-    pub fn flush_rx_queue(&mut self) {
-        for packet in self.rx_queue.drain(0..) {
-            print!("{packet}");
-        }
+    pub fn remove_connection(&mut self) -> Option<CspConnection> {
+        self.connections.pop_front()
     }
 }
 
