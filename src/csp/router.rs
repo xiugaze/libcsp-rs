@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -26,7 +27,7 @@ use super::{Csp, CspId};
 pub struct Router {
     qfifo: Arc<Mutex<CspQfifo>>,
     ports: Arc<Mutex<Vec<CspPort>>>,
-    connections: Vec<CspConnection>,
+    connections: Vec<Arc<CspConnection>>,
 }
 impl Router {
     pub fn new(qfifo: Arc<Mutex<CspQfifo>>, ports: Arc<Mutex<Vec<CspPort>>>) -> Self {
@@ -121,6 +122,37 @@ impl Router {
             };
         }
         None
+    }
+
+    pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> Arc<CspConnection>{
+        let incoming_id = CspId {
+            priority,               // same priority
+            flags: 0,               // no flags
+            source: destination,    // from incoming
+            destination: 0,         // disables input filter on destination node? (csp_conn.c)
+            dport: 0,               // temp, changes later on
+            sport: destination_port,
+        };
+
+        let outgoing_id = CspId {
+            priority,
+            flags: 0,
+            source: 0,
+            destination: destination,
+            dport: destination_port,
+            sport: 0,
+        };
+
+        let conn = Arc::new(CspConnection { 
+            conn_type: ConnectionType::Client, 
+            conn_state: ConnectionState::Open, 
+            rx_queue: VecDeque::new(),
+            id_out: outgoing_id,
+            id_in: incoming_id 
+        });
+
+        self.connections.push(Arc::clone(&conn));
+        conn
     }
 
     // TODO: Implement

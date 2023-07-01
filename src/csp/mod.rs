@@ -15,7 +15,7 @@ use self::{
     port::{CspPort, CspSocket},
     qfifo::CspQfifo,
     router::Router,
-    types::{CspPacket, CspResult},
+    types::{CspPacket, CspResult}, connection::CspConnection,
 };
 
 pub mod connection;
@@ -122,5 +122,9 @@ impl Csp {
         let mut ports = self.ports.lock().unwrap();
         ports.push(port);
         Ok(ports.len())
+    }
+
+    pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> Arc<CspConnection> {
+        self.router.connect(priority, destination, destination_port)
     }
 }

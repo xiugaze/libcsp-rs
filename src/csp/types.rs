@@ -1,5 +1,5 @@
 use std::{collections::VecDeque, sync::{Mutex, Arc}, io::{self, Cursor}, fmt};
-use byteorder::{ReadBytesExt, BigEndian};
+use byteorder::{ReadBytesExt, BigEndian, LittleEndian, WriteBytesExt};
 
 use super::{
     qfifo::CspQfifo,
@@ -34,7 +34,7 @@ pub struct CspPacket {
 
 
 impl CspPacket {
-    pub fn new(length: usize, data: [u8; 256], id: CspId) -> Self {
+    pub fn new(length: usize, data: [u8; 256]) -> Self {
         let mut header: [u8; 8]= [0; 8];
         header[2..].copy_from_slice(&data[0..6]);
 
@@ -75,6 +75,17 @@ impl CspPacket {
             dport: ((id >> DPORT_OFFSET) as u8 & DPORT_MASK),
             sport: ((id >> SPORT_OFFSET) as u8 & SPORT_MASK),
         }
+    }
+
+    pub fn prepend_id(id: &CspId) -> Vec<u8> {
+        let id: u64 = ((id.priority as u64) << PRIO_OFFSET) |
+                          ((id.flags as u64) << FLAGS_OFFSET) |
+                          ((id.source as u64) << SRC_OFFSET) | 
+                          ((id.dport as u64) << DPORT_OFFSET) | 
+                          ((id.sport as u64) << SPORT_OFFSET);
+        let mut wtr = vec![];
+        wtr.write_u64::<BigEndian>(id << 16).unwrap();
+        wtr[..6].to_vec()
     }
 }
 

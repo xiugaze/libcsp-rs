@@ -1,3 +1,5 @@
+use super::{types::CspPacket, CspId};
+
 
 pub fn dump_buffer(buffer: &[u8], len: usize) {
 
@@ -40,9 +42,18 @@ pub fn dump_buffer(buffer: &[u8], len: usize) {
 
 pub fn test_buffer() -> [u8; 256] {
     let mut buffer: [u8; 256] = [0; 256];
+    let id = CspId {
+        priority: 2,
+        flags: 0x0,
+        source: 0,
+        destination: 0,
+        dport: 0,
+        sport: 1,
+    };
 
+    let id = CspPacket::prepend_id(&id);
     for i in 0..6 {
-        buffer[i] = 0xF0 + i as u8;
+        buffer[i] = id[i];
     }
 
     let mut counter: u8 = 0x00;

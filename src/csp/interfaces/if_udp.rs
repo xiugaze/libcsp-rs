@@ -61,7 +61,7 @@ impl UdpInterface {
                 println!("Message from {src_addr}: ");
                 utils::dump_buffer(&buf, len);
 
-                let packet = CspPacket::new(len, buf, CspId::default());
+                let packet = CspPacket::new(len, buf);
                 udp_state.push_qfifo(packet, Arc::clone(&clone));
             }
         }));
