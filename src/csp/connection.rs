@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, rc::Rc, cell::RefCell};
+use std::{collections::VecDeque, rc::Rc, cell::RefCell, sync::Arc};
 
 use super::{types::CspPacket, CspId};
 
@@ -32,7 +32,8 @@ impl CspConnection {
     pub fn id_in(&self) -> &CspId {
         &self.id_in
     }
-    pub fn conn_type(&self) -> ConnectionType {
+
+    pub fn conn_type(self: Arc<Self>) -> ConnectionType {
         self.conn_type
     }
 

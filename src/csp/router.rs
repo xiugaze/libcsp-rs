@@ -160,7 +160,19 @@ impl Router {
         // do nothing
     }
 
-    pub fn get_connection_pool(&mut self) -> &mut Vec<CspConnection> {
+    pub fn get_connection_pool(&mut self) -> &mut Vec<Arc<CspConnection>> {
         &mut self.connections
     }
+
+    pub fn connection_find_dport(&self, dport: u8) {
+        for conn in self.connections {
+            if conn.id_in().dport != dport { continue; }
+            if let ConnectionType::Client = conn.conn_type() { continue; }
+            if conn.id_in().dport != dport { continue; }
+            
+        }
+
+    }
+
+
 }
