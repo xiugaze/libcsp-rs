@@ -14,11 +14,13 @@ fn main() {
         let priority = 2;
         let server_address = 255;
         let server_port = 10;
+        // client connects to server
         let conn = csp.connect(priority, server_address, server_port);
 
         // 2: Initialize the server
         let socket = Socket::conn();
-        csp.bind(socket, 0);
+        // bind socket to port 0
+        dbg!(csp.bind(socket, 10));
 
         // 3: Make a packet (id is set in send_direct from connection)
         let packet = Packet::new(256, test_buffer());

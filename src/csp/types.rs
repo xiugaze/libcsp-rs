@@ -69,7 +69,7 @@ impl Packet {
         // Network Byte order is Big-endian, so we need
         // be64toh (Big Endian 64 unsigned to host architecture)
         let id: u64 = Cursor::new(data).read_u64::<BigEndian>().unwrap() as u64;
-        println!("{id:#018x}");
+        println!("id: {id:#018x}");
         CspId {
             priority: ((id >> PRIO_OFFSET) as u8 & PRIO_MASK),
             flags: ((id >> FLAGS_OFFSET) as u8 & FLAGS_MASK),
@@ -110,6 +110,8 @@ impl fmt::Display for Packet {
 
 
 pub type CspResult<T> = Result<T, CspError>; 
+
+#[derive(Debug)]
 pub enum CspError {
     InvalidPort,
     OutOfPorts,

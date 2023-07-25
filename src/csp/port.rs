@@ -14,15 +14,23 @@ pub enum PortState {
 pub struct Port {
     pub state: PortState,
     // TODO: Should socket be owned by the port?
-    pub socket: Socket,
+    pub socket: Option<Socket>,
 }
 
 impl Port {
-    pub fn bind(socket: Socket) -> Port {
+    pub fn closed() -> Port {
         Port {
-            state: PortState::Open,
-            socket,
+            state: PortState::Closed,
+            socket: None,
         }
+    }
+
+    pub fn bind(&mut self, socket: Socket) {
+        self.socket = Some(socket);
+    }
+
+    pub fn open(&mut self) {
+        self.state = PortState::Open;
     }
 
     pub fn close(&mut self) {

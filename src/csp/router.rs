@@ -33,21 +33,24 @@ pub struct Router {
 }
 impl Router {
     pub fn new(qfifo: Arc<Mutex<CspQfifo>>) -> Self {
-        Router {
-            qfifo,
-            ports: Vec::new(),
-            connections: Vec::new(),
+        let mut ports: Vec<Arc<Mutex<Port>>> = Vec::with_capacity(16);
+        for i in 0..16 {
+            ports.push(Arc::new(Mutex::new(Port::closed())))
         }
+        let mut router = Router {
+            qfifo,
+            ports,
+            connections: Vec::new(),
+        };
+        router
     }
 
     pub fn bind(&mut self, socket: Socket, index: u8) -> CspResult<usize> {
         if index <= 16 {
-            let port = Port {
-                state: PortState::Open,
-                socket: Socket::conn_less()
-            };
-            self.ports[index as usize] = Arc::new(Mutex::new(port));
-            return Ok(self.ports.len())
+            let mut port = self.ports.get(index as usize).unwrap().lock().unwrap();
+            port.open();
+            port.bind(socket);
+            Ok(index as usize)
         } else {
             return Err(CspError::InvalidPort)
         }
@@ -101,16 +104,16 @@ impl Router {
         // TODO: Make this better
         // let something =
 
-        let socket = match self.ports.get(packet.id().dport as usize) {
-            Some(port) =>  {
-                let mut port = port.lock().unwrap();
-                port.socket
-            },
-            /* FIX: What is this error? I think this means that the socket is unbound?
-               but binding the socket is not dependent on index? 
-            */
-            None => return Err(CspError::NoPort)
-        };
+        let port = self.ports.get(packet.id().dport as usize);
+        if port.is_none() {
+            return Err(CspError::NoPort)
+        }
+        let mut port = port.unwrap().lock().unwrap();
+        let socket = &mut port.socket;
+        if socket.is_none() {
+            return Err(CspError::InvalidPort)
+        }
+        let socket: &mut Socket = socket.as_mut().unwrap();
 
         if socket.is_conn_less() {
             socket.push(packet);
