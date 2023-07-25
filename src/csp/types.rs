@@ -4,7 +4,7 @@ use byteorder::{ReadBytesExt, BigEndian, LittleEndian, WriteBytesExt};
 use super::{
     qfifo::CspQfifo,
     interfaces::CspInterfaceState,
-    CspId,
+    CspId, 
 };
 
 
@@ -25,21 +25,20 @@ const FLAGS_OFFSET: usize   = 0;
 
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq)]
-pub struct CspPacket {
+pub struct Packet {
     length: u16,
     id: CspId,
     header: [u8; 6],
     data: Vec<u8>,
 }
 
-
-impl CspPacket {
+impl Packet {
     pub fn new(length: usize, data: [u8; 256]) -> Self {
         let mut header: [u8; 8]= [0; 8];
         header[2..].copy_from_slice(&data[0..6]);
 
-        let id = CspPacket::strip_id(header);
-        CspPacket {
+        let id = Packet::strip_id(header);
+        Packet {
             // length = data size - header size
             length: length as u16 - HEADER_SIZE, 
             id,
@@ -59,6 +58,10 @@ impl CspPacket {
     }
     pub fn id(&self) -> &CspId {
         &self.id
+    }
+
+    pub fn set_id(&mut self, id: CspId) {
+        self.id = id;
     }
 
     pub fn strip_id(data: [u8; 8]) -> CspId {
@@ -87,9 +90,10 @@ impl CspPacket {
         wtr.write_u64::<BigEndian>(id << 16).unwrap();
         wtr[..6].to_vec()
     }
+
 }
 
-impl fmt::Display for CspPacket {
+impl fmt::Display for Packet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let bytes = &self.data[0..5];
         let mut data_preview = String::new();
@@ -107,6 +111,8 @@ impl fmt::Display for CspPacket {
 
 pub type CspResult<T> = Result<T, CspError>; 
 pub enum CspError {
+    InvalidPort,
     OutOfPorts,
+    NoPort,
     EmptyQfifo
 }

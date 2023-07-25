@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use crate::csp::{qfifo::{CspQfifo, self}, types::CspPacket};
+use crate::csp::{qfifo::{CspQfifo, self}, types::Packet};
 
 use super::{CspInterfaceState, NextHop};
 
@@ -35,7 +35,7 @@ impl NextHop for LoopbackInterface {
     /**
         Loopback TX: Adds packet back to Receive queue
     */
-    fn nexthop(self: Arc<Self>, packet: crate::csp::types::CspPacket) -> std::io::Result<usize> {
+    fn nexthop(self: Arc<Self>, packet: crate::csp::types::Packet) -> std::io::Result<usize> {
         let mut queue = self.state.qfifo.lock().unwrap();
         let iface = Arc::clone(&self);
         queue.push(packet, iface)

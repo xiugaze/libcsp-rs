@@ -1,4 +1,4 @@
-use super::{types::CspPacket, CspId};
+use super::{types::Packet, CspId};
 
 
 pub fn dump_buffer(buffer: &[u8], len: usize) {
@@ -51,7 +51,7 @@ pub fn test_buffer() -> [u8; 256] {
         sport: 1,
     };
 
-    let id = CspPacket::prepend_id(&id);
+    let id = Packet::prepend_id(&id);
     for i in 0..6 {
         buffer[i] = id[i];
     }

@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::sync::Arc;
 use std::io;
 
-use crate::csp::CspPacket;
+use crate::csp::Packet;
 
 pub mod if_udp;
 pub mod if_loopback;
@@ -55,7 +55,7 @@ pub trait NextHop {
     /**
         Transmits the packet on the target interface
     */
-    fn nexthop(self: Arc<Self>, packet: CspPacket) -> io::Result<usize>;
+    fn nexthop(self: Arc<Self>, packet: Packet) -> io::Result<usize>;
 
     /**
         Returns an `Arc` to the state struct of the target interface

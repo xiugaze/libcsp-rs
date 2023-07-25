@@ -1,10 +1,10 @@
 use std::{sync::{Mutex, Arc}, collections::VecDeque, io};
 
-use super::{types::CspPacket, interfaces::{NextHop, CspInterfaceState}};
+use super::{types::Packet, interfaces::{NextHop, CspInterfaceState}};
 
 #[derive(Debug)]
 pub struct QfifoElement {
-    pub packet: CspPacket,
+    pub packet: Packet,
     pub interface: Arc<dyn NextHop+Send+Sync>,
 }
 
@@ -20,7 +20,7 @@ impl CspQfifo {
         }
     }
 
-    pub fn push(&mut self, packet: CspPacket, interface: Arc<dyn NextHop+Send+Sync>) -> io::Result<usize> {
+    pub fn push(&mut self, packet: Packet, interface: Arc<dyn NextHop+Send+Sync>) -> io::Result<usize> {
         let qfifo_element = QfifoElement {
             packet,
             interface: Arc::clone(&interface),
@@ -29,7 +29,7 @@ impl CspQfifo {
         return Ok(0)
     }
 
-    pub fn pop(&mut self) -> Option<(CspPacket, Arc<dyn NextHop + Send + Sync>)> {
+    pub fn pop(&mut self) -> Option<(Packet, Arc<dyn NextHop + Send + Sync>)> {
         // removes from queue, qfifio_element is only owner of Arcs
         match self.qfifo.pop_front() {
             Some(qfifo_element) => Some((qfifo_element.packet, qfifo_element.interface)),

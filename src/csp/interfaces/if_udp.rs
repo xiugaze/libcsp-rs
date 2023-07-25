@@ -1,6 +1,6 @@
 use crate::csp::interfaces::{CspInterfaceState, NextHop};
 use crate::csp::qfifo::CspQfifo;
-use crate::csp::types::CspPacket;
+use crate::csp::types::Packet;
 use crate::csp::{utils, CspId};
 use std::io;
 use std::net::UdpSocket;
@@ -61,7 +61,7 @@ impl UdpInterface {
                 println!("Message from {src_addr}: ");
                 utils::dump_buffer(&buf, len);
 
-                let packet = CspPacket::new(len, buf);
+                let packet = Packet::new(len, buf);
                 udp_state.push_qfifo(packet, Arc::clone(&clone));
             }
         }));
@@ -84,7 +84,7 @@ impl UdpQfifo {
 
     fn push_qfifo(
         &mut self,
-        packet: CspPacket,
+        packet: Packet,
         iface: Arc<UdpInterface>,
     ) -> Result<usize, io::Error> {
         self.qfifo.lock().unwrap().push(packet, iface)
@@ -93,7 +93,7 @@ impl UdpQfifo {
 
 impl NextHop for UdpInterface {
 
-    fn nexthop(self: Arc<Self>, packet: CspPacket) -> io::Result<usize> {
+    fn nexthop(self: Arc<Self>, packet: Packet) -> io::Result<usize> {
         let buf = packet.make_buffer();
         self.socket.send_to(&buf, (self.host, self.rport))
     }

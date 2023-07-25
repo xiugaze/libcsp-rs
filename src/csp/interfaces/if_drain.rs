@@ -1,6 +1,6 @@
 use std::{sync::{Arc, Mutex}, io};
 
-use crate::csp::types::CspPacket;
+use crate::csp::types::Packet;
 
 use super::{NextHop, CspInterfaceState};
 
@@ -23,7 +23,7 @@ impl NextHop for DrainInterface {
     /** 
         Consumes and prints the packet
     */
-    fn nexthop(self: Arc<Self>, packet: CspPacket) -> io::Result<usize> {
+    fn nexthop(self: Arc<Self>, packet: Packet) -> io::Result<usize> {
         println!("DRAINED: {}", packet);
         Ok(0)
     }

@@ -12,10 +12,10 @@ use self::{
         CspInterfaceState,
         NextHop,
     },
-    port::{CspPort, CspSocket},
+    port::{Port, Socket},
     qfifo::CspQfifo,
     router::Router,
-    types::{CspPacket, CspResult}, connection::CspConnection,
+    types::{Packet, CspResult}, connection::{Connection, ConnectionState},
 };
 
 pub mod connection;
@@ -34,7 +34,7 @@ pub struct Csp {
     pub interfaces: InterfaceList,
     pub num_interfaces: usize,
     router: router::Router,
-    pub ports: Arc<Mutex<Vec<CspPort>>>,
+    // pub ports: Arc<Mutex<Vec<Port>>>,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -60,13 +60,11 @@ pub enum InterfaceType {
 impl Default for Csp {
     fn default() -> Self {
         let qfifo = Arc::new(Mutex::new(CspQfifo::new()));
-        let ports = Arc::new(Mutex::new(Vec::new()));
         Csp {
             qfifo: Arc::clone(&qfifo),
             interfaces: VecDeque::new(),
             num_interfaces: 0,
-            ports: Arc::clone(&ports),
-            router: Router::new(Arc::clone(&qfifo), Arc::clone(&ports)),
+            router: Router::new(Arc::clone(&qfifo)),
         }
     }
 }
@@ -93,16 +91,48 @@ impl Csp {
         self.num_interfaces += 1;
     }
 
-    pub fn send_direct(iface: Arc<dyn NextHop>, packet: CspPacket) -> io::Result<usize> {
+
+    pub fn send(&mut self, conn: &Arc<Mutex<Connection>>, packet: Packet) {
+        let conn = Arc::clone(conn);
+        let conn = conn.lock().unwrap();
+        match conn.conn_state() {
+            ConnectionState::Open => {
+                Self::send_direct(self, *conn.id_out(), packet, None);
+            },
+            ConnectionState::Closed => { return },
+        }
+    }
+
+    pub fn send_direct(&mut self, idout: CspId, packet: Packet, routed_from: Option<Arc<dyn NextHop>>) {
+        let mut packet = packet;
+        let from_me: bool = routed_from.is_none();
+
+        /*
+        * TODO: 
+        * 1. Send to destination address on local subnet
+        * 2. Send via routing table
+        */
+
+        let default = Arc::clone(self.interfaces.get(0).unwrap());
+        packet.set_id(idout);
+        Self::send_direct_iface(default, packet);
+    }
+
+    pub fn send_direct_iface(iface: Arc<dyn NextHop>, packet: Packet) -> io::Result<usize> {
         iface.nexthop(packet)
     }
 
-    pub fn send_from_list(&mut self, index: usize, packet: CspPacket) -> io::Result<usize> {
+    pub fn send_from_list(&mut self, index: usize, packet: Packet) -> io::Result<usize> {
         let iface = Arc::clone(&self.interfaces[index]);
         iface.nexthop(packet)
     }
 
-    pub fn read(&self) -> CspPacket {
+    pub fn conn_close(conn: Arc<Mutex<Connection>>) {
+        conn.lock().unwrap().close();
+
+    }
+
+    pub fn read(&self) -> Packet {
         let (packet, _) = self.qfifo.lock().unwrap().pop().unwrap();
         packet
     }
@@ -114,17 +144,11 @@ impl Csp {
     /**
         Binds a socket to a port, and returns the port index.
     */
-    pub fn bind(&mut self, socket: CspSocket) -> CspResult<usize> {
-        let port = CspPort {
-            state: port::CspPortState::Open,
-            socket,
-        };
-        let mut ports = self.ports.lock().unwrap();
-        ports.push(port);
-        Ok(ports.len())
+    pub fn bind(&mut self, socket: Socket, index: u8) -> CspResult<usize> {
+        self.router.bind(socket, index)
     }
 
-    pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> Arc<CspConnection> {
+    pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> Arc<Mutex<Connection>> {
         self.router.connect(priority, destination, destination_port)
     }
 }

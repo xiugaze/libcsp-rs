@@ -3,7 +3,7 @@ use crate::csp::types::CspError;
 #[cfg(test)]
 use super::*;
 use crate::{
-    csp::{self, types, utils, CspId, CspPacket, CspResult, CspSocket},
+    csp::{self, types, utils, CspId, Packet, CspResult, Socket},
     Csp,
 };
 use std::{net::UdpSocket, sync::Arc, thread, time::Duration};
@@ -20,11 +20,11 @@ fn test_csp_id() {
     };
 
     let data = [0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0xA4, 0x80];
-    let stripped = CspPacket::strip_id(data);
+    let stripped = Packet::strip_id(data);
     assert_eq!(id, stripped);
 
     let data = vec![0x80, 0x00, 0x00, 0x00, 0xA4, 0x80];
-    assert_eq!(data, CspPacket::prepend_id(&id));
+    assert_eq!(data, Packet::prepend_id(&id));
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn test_loopback_send_direct() {
     let mut csp = Csp::default();
     csp.add_interface("loopback");
 
-    let packet = CspPacket::new(256, utils::test_buffer());
+    let packet = Packet::new(256, utils::test_buffer());
     let to_send = packet.clone();
 
     csp.send_from_list(0, to_send);
@@ -47,13 +47,13 @@ fn test_loopback_route() {
 
     // send packet on buffer (enqueue on global qfifo)
     let buffer = utils::test_buffer();
-    let packet = dbg!( CspPacket::new(256, buffer) );
+    let packet = dbg!( Packet::new(256, buffer) );
     let to_send = packet.clone();
 
-    Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
+    Csp::send_direct_iface(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
 
     // conn_less = true
-    let socket = CspSocket::conn_less();
+    let socket = Socket::conn_less();
     csp.bind(socket);
     csp.route_work();
 
