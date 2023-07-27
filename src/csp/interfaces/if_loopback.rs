@@ -15,7 +15,7 @@ pub struct LoopbackState {
 }
 
 impl LoopbackInterface {
-    pub fn init(qfifo: &Arc<Mutex<CspQfifo>>,  index: usize) -> Self {
+    pub fn init(qfifo: &Arc<Mutex<CspQfifo>>, index: usize) -> Self {
         let qfifo = Arc::clone(qfifo);
         let state = Arc::new(LoopbackState::from(qfifo));
 

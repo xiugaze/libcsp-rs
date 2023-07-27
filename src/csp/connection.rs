@@ -7,13 +7,13 @@ use std::{
 
 use super::{port::Socket, types::Packet, CspId};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ConnectionType {
     Client,
     Server,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ConnectionState {
     Open,
     Closed,
@@ -22,6 +22,7 @@ pub enum ConnectionState {
 /**
     Represents a connection between two sockets???
 */
+#[derive(Debug)]
 pub struct Connection {
     conn_type: ConnectionType,
     conn_state: ConnectionState,
@@ -62,7 +63,7 @@ impl Connection {
         self.rx_queue.push_back(packet);
     }
 
-    pub fn pop(&mut self) -> Option<Packet> {
+    pub fn read(&mut self) -> Option<Packet> {
         self.rx_queue.pop_front()
     }
 

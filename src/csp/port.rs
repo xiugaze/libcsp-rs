@@ -14,7 +14,7 @@ pub enum PortState {
 pub struct Port {
     pub state: PortState,
     // TODO: Should socket be owned by the port?
-    pub socket: Option<Socket>,
+    socket: Option<Arc<Mutex<Socket>>>,
 }
 
 impl Port {
@@ -25,8 +25,15 @@ impl Port {
         }
     }
 
-    pub fn bind(&mut self, socket: Socket) {
-        self.socket = Some(socket);
+    pub fn socket(&mut self) -> Option<Arc<Mutex<Socket>>> {
+        match &mut self.socket {
+            Some(socket) => Some(Arc::clone(&socket)),
+            None => None,
+        }
+    }
+
+    pub fn bind(&mut self, socket: &Arc<Mutex<Socket>>) {
+        self.socket = Some(Arc::clone(socket));
     }
 
     pub fn open(&mut self) {
@@ -45,11 +52,13 @@ impl Port {
     }
 }
 
+#[derive(Debug)]
 pub enum SocketType {
     Connectionless,
     ConnectionOriented,
 }
 
+#[derive(Debug)]
 pub struct Socket  {
     queue: VecDeque<Packet>,
     socket_type: SocketType,

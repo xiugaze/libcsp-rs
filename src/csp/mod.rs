@@ -144,7 +144,7 @@ impl Csp {
     /**
         Binds a socket to a port, and returns the port index.
     */
-    pub fn bind(&mut self, socket: Socket, index: u8) -> CspResult<usize> {
+    pub fn bind(&mut self, socket: &Arc<Mutex<Socket>>, index: u8) -> CspResult<usize> {
         self.router.bind(socket, index)
     }
 

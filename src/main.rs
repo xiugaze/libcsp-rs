@@ -1,4 +1,6 @@
 pub mod csp;
+use std::sync::{Mutex, Arc};
+
 use csp::{Csp, port::Socket, types::Packet, utils::test_buffer};
 
 fn main() {
@@ -12,25 +14,25 @@ fn main() {
         */
         // 1: Make a new connection and add it to the connection pool;
         let priority = 2;
-        let server_address = 255;
+        let server_address = 0;
         let server_port = 10;
         // client connects to server
-        let conn = csp.connect(priority, server_address, server_port);
+        let client_conn = csp.connect(priority, server_address, server_port);
 
         // 2: Initialize the server
-        let socket = Socket::conn();
-        // bind socket to port 0
-        dbg!(csp.bind(socket, 10));
+        let socket = Arc::new(Mutex::new(Socket::conn()));
+        // bind socket to port 10
+        let _ = csp.bind(&socket, 10);
 
         // 3: Make a packet (id is set in send_direct from connection)
         let packet = Packet::new(256, test_buffer());
 
         // 4: Send the packet 
         // TODO: Currently on default interface
-        csp.send(&conn, packet);
+        csp.send(&client_conn, packet);
 
         // 5. Close the connection
-        conn.lock().unwrap().close();
+        client_conn.lock().unwrap().close();
 
 
         /*
@@ -41,6 +43,7 @@ fn main() {
         * route the packet to the correct endpoint. 
         */
         csp.route_work();
+        let server_conn = dbg!(socket.lock().unwrap().accept());
     }
 
 
