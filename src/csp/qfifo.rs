@@ -21,12 +21,13 @@ impl CspQfifo {
     }
 
     pub fn push(&mut self, packet: Packet, interface: Arc<dyn NextHop+Send+Sync>) -> io::Result<usize> {
+        let size = packet.len() as usize;
         let qfifo_element = QfifoElement {
             packet,
             interface: Arc::clone(&interface),
         };
-        self.qfifo.push_back(qfifo_element);
-        return Ok(0)
+        let success = self.qfifo.push_back(qfifo_element);
+        return Ok(size)
     }
 
     pub fn pop(&mut self) -> Option<(Packet, Arc<dyn NextHop + Send + Sync>)> {

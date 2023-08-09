@@ -68,20 +68,20 @@ pub struct Socket  {
 
 impl Socket {
 
-    pub fn conn_less() -> Socket {
-        Socket {
+    pub fn conn_less() -> Arc<Mutex<Socket>> {
+        Arc::new(Mutex::new(Socket {
             queue: VecDeque::new(),
             socket_type: SocketType::Connectionless,
             inc_connection: None,
-        }
+        }))
     }
 
-    pub fn conn() -> Socket {
-        Socket {
+    pub fn conn() -> Arc<Mutex<Socket>> {
+        Arc::new(Mutex::new(Socket {
             queue: VecDeque::new(),
             socket_type: SocketType::ConnectionOriented,
             inc_connection: None, 
-        }
+        }))
     }
 
     pub fn is_conn_less(&self) -> bool {

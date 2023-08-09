@@ -15,7 +15,7 @@ use self::{
     port::{Port, Socket},
     qfifo::CspQfifo,
     router::Router,
-    types::{Packet, CspResult}, connection::{Connection, ConnectionState},
+    types::{Packet, CspResult, CspError}, connection::{Connection, ConnectionState},
 };
 
 pub mod connection;
@@ -37,6 +37,17 @@ pub struct Csp {
     // pub ports: Arc<Mutex<Vec<Port>>>,
 }
 
+pub enum ServicePort {
+    Port(u8),
+    Compare, 
+    Ping, 
+    // Process,
+    // MemFree,
+    Reboot,
+    // BufFree,
+    Uptime,
+}
+
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CspId {
     priority: u8,
@@ -50,6 +61,9 @@ pub struct CspId {
 impl CspId {
     pub fn copy_from(&mut self, other: CspId) {
         *self = other;
+    }
+    pub fn dport(&self) -> u8 {
+        self.dport
     }
 }
 
@@ -92,18 +106,18 @@ impl Csp {
     }
 
 
-    pub fn send(&mut self, conn: &Arc<Mutex<Connection>>, packet: Packet) {
+    pub fn send(&mut self, conn: &Arc<Mutex<Connection>>, packet: Packet) -> CspResult<usize>{
         let conn = Arc::clone(conn);
         let conn = conn.lock().unwrap();
         match conn.conn_state() {
             ConnectionState::Open => {
-                Self::send_direct(self, *conn.id_out(), packet, None);
+                Self::send_direct(self, *conn.id_out(), packet, None)
             },
-            ConnectionState::Closed => { return },
+            ConnectionState::Closed => { Err(CspError::ClosedConnection) },
         }
     }
 
-    pub fn send_direct(&mut self, idout: CspId, packet: Packet, routed_from: Option<Arc<dyn NextHop>>) {
+    pub fn send_direct(&mut self, idout: CspId, packet: Packet, routed_from: Option<Arc<dyn NextHop>>) -> CspResult<usize>{
         let mut packet = packet;
         let from_me: bool = routed_from.is_none();
 
@@ -114,12 +128,18 @@ impl Csp {
         */
 
         let default = Arc::clone(self.interfaces.get(0).unwrap());
+
+        // Copy identifier to packet
         packet.set_id(idout);
-        Self::send_direct_iface(default, packet);
+        Self::send_direct_iface(default, packet)
     }
 
-    pub fn send_direct_iface(iface: Arc<dyn NextHop>, packet: Packet) -> io::Result<usize> {
-        iface.nexthop(packet)
+    pub fn send_direct_iface(iface: Arc<dyn NextHop>, packet: Packet) -> CspResult<usize> {
+        match iface.nexthop(packet) {
+            Ok(len) => CspResult::Ok(len),
+            Err(_) => CspResult::Err(CspError::InterfaceSendFailed),
+
+        }
     }
 
     pub fn send_from_list(&mut self, index: usize, packet: Packet) -> io::Result<usize> {
@@ -129,7 +149,6 @@ impl Csp {
 
     pub fn conn_close(conn: Arc<Mutex<Connection>>) {
         conn.lock().unwrap().close();
-
     }
 
     pub fn read(&self) -> Packet {
@@ -144,11 +163,35 @@ impl Csp {
     /**
         Binds a socket to a port, and returns the port index.
     */
-    pub fn bind(&mut self, socket: &Arc<Mutex<Socket>>, index: u8) -> CspResult<usize> {
-        self.router.bind(socket, index)
+    pub fn bind(&mut self, socket: &Arc<Mutex<Socket>>, port: u8) -> CspResult<usize> {
+        self.router.bind(socket, port)
     }
 
     pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> Arc<Mutex<Connection>> {
         self.router.connect(priority, destination, destination_port)
+    }
+
+    pub fn check_service_port(port: u8) -> ServicePort {
+        match port { 
+            0 => ServicePort::Compare,
+            1 => ServicePort::Ping,
+            //2 => ServicePort::Process,
+            //3 => ServicePort::MemFree,
+            4 => ServicePort::Reboot,
+            //5 => ServicePort::BufFree,
+            6 => ServicePort::Uptime,
+            _ => ServicePort::Port(port)
+        }
+    }
+
+    pub fn service_handler(&self, packet: Packet) {
+        match Csp::check_service_port(packet.id().dport) {
+            ServicePort::Port(_) => todo!(),
+            ServicePort::Compare => todo!(),
+            ServicePort::Ping => todo!(),
+            ServicePort::Reboot => todo!(),
+            ServicePort::Uptime => todo!(),
+        }
+
     }
 }

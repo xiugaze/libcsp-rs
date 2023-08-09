@@ -7,7 +7,7 @@ fn main() {
     let mut csp = Csp::default();
     csp.add_interface("loopback");
 
-    for _ in 0..1 {
+    for _ in 0..2 {
 
         /*
         * Client/Server initialization
@@ -20,7 +20,7 @@ fn main() {
         let client_conn = csp.connect(priority, server_address, server_port);
 
         // 2: Initialize the server
-        let socket = Arc::new(Mutex::new(Socket::conn()));
+        let socket = Socket::conn();
         // bind socket to port 10
         let _ = csp.bind(&socket, 10);
 
@@ -34,7 +34,6 @@ fn main() {
         // 5. Close the connection
         client_conn.lock().unwrap().close();
 
-
         /*
         * Router
         *
@@ -43,15 +42,18 @@ fn main() {
         * route the packet to the correct endpoint. 
         */
         csp.route_work();
-        let server_conn = dbg!(socket.lock().unwrap().accept());
+        let server_conn = socket.lock().unwrap().accept();
+        if server_conn.is_some() {
+            let server_conn = server_conn.unwrap();
+            let packet = server_conn.lock().unwrap().read().unwrap();
+            if packet.id().dport() == server_port {
+                println!("Packet received on server_port {}: {:?}", server_port, packet.data())
+            } else {
+                csp.service_handler(packet);
+            }
+            Csp::conn_close(server_conn);
+        }
     }
-
-
-
-
-
-
-
 }
 
 

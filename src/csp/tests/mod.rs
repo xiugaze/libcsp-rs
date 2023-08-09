@@ -1,4 +1,4 @@
-use crate::csp::types::CspError;
+use crate::csp::{types::CspError, utils::test_buffer};
 
 #[cfg(test)]
 use super::*;
@@ -40,61 +40,57 @@ fn test_loopback_send_direct() {
     assert_eq!(packet, rec);
 }
 
-#[test]
-fn test_loopback_route() {
-    let mut csp = Csp::default();
-    csp.add_interface("loopback");
-
-    // send packet on buffer (enqueue on global qfifo)
-    let buffer = utils::test_buffer();
-    let packet = dbg!( Packet::new(256, buffer) );
-    let to_send = packet.clone();
-
-    Csp::send_direct_iface(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
-
-    // conn_less = true
-    let socket = Socket::conn_less();
-    csp.bind(socket);
-    csp.route_work();
-
-    let rec = csp
-        .ports
-        .lock()
-        .unwrap()
-        .get_mut(0)
-        .unwrap()
-        .get_socket()
-        .remove_connection()
-        .unwrap();
-    // assert_eq!(packet, rec)
-}
-
 // #[test]
-// fn test_loopback_route_to_socket_conn() {
+// fn test_loopback_route() {
 //     let mut csp = Csp::default();
 //     csp.add_interface("loopback");
 //
 //     // send packet on buffer (enqueue on global qfifo)
 //     let buffer = utils::test_buffer();
-//     let packet = CspPacket::new(256, buffer, CspId::default());
+//     let packet = dbg!( Packet::new(256, buffer) );
 //     let to_send = packet.clone();
 //
-//     Csp::send_direct(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
+//     Csp::send_direct_iface(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
 //
-//     // conn_less = false
-//     let socket = CspSocket::conn();
+//     // conn_less = true
+//     let socket = Socket::conn_less();
 //     csp.bind(socket);
 //     csp.route_work();
 //
 //     let rec = csp
-//         .router
-//         .get_connection_pool()
+//         .ports
+//         .lock()
+//         .unwrap()
 //         .get_mut(0)
 //         .unwrap()
-//         .pop()
+//         .get_socket()
+//         .remove_connection()
 //         .unwrap();
-//     assert_eq!(packet, rec)
+//     // assert_eq!(packet, rec)
 // }
+
+#[test]
+fn test_loopback_route_to_socket_conn() {
+    let mut csp = Csp::default();
+    csp.add_interface("loopback");
+
+    // send packet on buffer (enqueue on global qfifo)
+    let mut packet = Packet::new(256, test_buffer());
+    let to_send = packet.clone();
+
+    let connection = csp.connect(2, 0, 10);
+
+    let sent = csp.send(&connection, to_send);
+
+    // make sure packet was actually sent
+    assert_eq!(true, sent.is_ok());
+
+    csp.route_work();
+
+    let rec = connection.lock().unwrap().read().unwrap();
+
+    assert_eq!(packet, rec)
+}
 //
 // #[test]
 // fn test_udp_rec() {

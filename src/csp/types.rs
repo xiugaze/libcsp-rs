@@ -64,6 +64,14 @@ impl Packet {
         self.id = id;
     }
 
+    pub fn set_dport(&mut self, dport: u8) {
+        self.id.dport = dport;
+    }
+
+    pub fn set_sport(&mut self, sport: u8) {
+        self.id.sport = sport;
+    }
+
     pub fn strip_id(data: [u8; 8]) -> CspId {
         // 48 bits (6 bytes of data) to build the ID
         // Network Byte order is Big-endian, so we need
@@ -90,7 +98,9 @@ impl Packet {
         wtr.write_u64::<BigEndian>(id << 16).unwrap();
         wtr[..6].to_vec()
     }
-
+    pub fn data(&self) -> &Vec<u8> {
+        &self.data
+    }
 }
 
 impl fmt::Display for Packet {
@@ -116,5 +126,7 @@ pub enum CspError {
     InvalidPort,
     OutOfPorts,
     NoPort,
-    EmptyQfifo
+    EmptyQfifo,
+    InterfaceSendFailed,
+    ClosedConnection,
 }
