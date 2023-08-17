@@ -192,7 +192,7 @@ impl Router {
         destination: u16,
         destination_port: u8,
     ) -> Arc<Mutex<Connection>> {
-        let incoming_id = CspId {
+        let mut incoming_id = CspId {
             priority,            // same priority
             flags: 0,            // no flags
             source: destination, // from incoming
@@ -201,7 +201,7 @@ impl Router {
             sport: destination_port,
         };
 
-        let outgoing_id = CspId {
+        let mut outgoing_id = CspId {
             priority,
             flags: 0,
             source: 0,
@@ -209,6 +209,10 @@ impl Router {
             dport: destination_port,
             sport: 0,
         };
+
+        let sport_outgoing: u8 = self.connections.len() as u8 + 16 + 1;
+        outgoing_id.sport = sport_outgoing;
+        incoming_id.dport = sport_outgoing;
 
         let conn = Arc::new(Mutex::new(Connection::new(
             incoming_id,

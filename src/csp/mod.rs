@@ -26,6 +26,7 @@ pub mod router;
 pub mod tests;
 pub mod types;
 pub mod utils;
+//pub mod csp_mutex;
 
 pub type InterfaceList = VecDeque<Arc<dyn NextHop>>;
 
@@ -106,6 +107,9 @@ impl Csp {
     }
 
 
+    /**
+    * Send a packet on a a connection
+    */
     pub fn send(&mut self, conn: &Arc<Mutex<Connection>>, packet: Packet) -> CspResult<usize>{
         let conn = Arc::clone(conn);
         let conn = conn.lock().unwrap();
@@ -115,6 +119,22 @@ impl Csp {
             },
             ConnectionState::Closed => { Err(CspError::ClosedConnection) },
         }
+    }
+
+    /**
+    */
+    pub fn sendto(&mut self, priority: u8, destination: u16, destination_port: u8, source_port: u8, mut packet: Packet) -> CspResult<usize> {
+        // TODO: handle opts
+        let id = CspId {
+            flags: packet.id().flags,
+            destination,
+            dport: destination_port,
+            source: 0,
+            sport: source_port,
+            priority,
+        };
+        packet.set_id(id);
+        self.send_direct(*packet.id(), packet, None)
     }
 
     pub fn send_direct(&mut self, idout: CspId, packet: Packet, routed_from: Option<Arc<dyn NextHop>>) -> CspResult<usize>{
@@ -130,6 +150,7 @@ impl Csp {
         let default = Arc::clone(self.interfaces.get(0).unwrap());
 
         // Copy identifier to packet
+        // BUG: WHY IS THIS, for send direct it just copies itself
         packet.set_id(idout);
         Self::send_direct_iface(default, packet)
     }
@@ -184,14 +205,17 @@ impl Csp {
         }
     }
 
-    pub fn service_handler(&self, packet: Packet) {
+    pub fn service_handler(&mut self, packet: Packet) {
         match Csp::check_service_port(packet.id().dport) {
             ServicePort::Port(_) => todo!(),
             ServicePort::Compare => todo!(),
-            ServicePort::Ping => todo!(),
-            ServicePort::Reboot => todo!(),
+            ServicePort::Ping => {let _ = self.echo(packet);},
+            ServicePort::Reboot => println!("Reboot request received"),
             ServicePort::Uptime => todo!(),
         }
+    }
 
+    pub fn echo(&mut self, packet: Packet) -> CspResult<usize> {
+        self.sendto(packet.id().priority, packet.id().source, packet.id().sport, packet.id().dport(), packet)
     }
 }

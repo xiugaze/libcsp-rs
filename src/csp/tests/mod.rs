@@ -32,7 +32,7 @@ fn test_loopback_send_direct() {
     let mut csp = Csp::default();
     csp.add_interface("loopback");
 
-    let packet = Packet::new(256, utils::test_buffer());
+    let packet = Packet::from(256, utils::test_buffer());
     let to_send = packet.clone();
 
     csp.send_from_list(0, to_send);
@@ -40,47 +40,20 @@ fn test_loopback_send_direct() {
     assert_eq!(packet, rec);
 }
 
-// #[test]
-// fn test_loopback_route() {
-//     let mut csp = Csp::default();
-//     csp.add_interface("loopback");
-//
-//     // send packet on buffer (enqueue on global qfifo)
-//     let buffer = utils::test_buffer();
-//     let packet = dbg!( Packet::new(256, buffer) );
-//     let to_send = packet.clone();
-//
-//     Csp::send_direct_iface(Arc::clone(csp.interfaces.get(0).unwrap()), to_send);
-//
-//     // conn_less = true
-//     let socket = Socket::conn_less();
-//     csp.bind(socket);
-//     csp.route_work();
-//
-//     let rec = csp
-//         .ports
-//         .lock()
-//         .unwrap()
-//         .get_mut(0)
-//         .unwrap()
-//         .get_socket()
-//         .remove_connection()
-//         .unwrap();
-//     // assert_eq!(packet, rec)
-// }
-
 #[test]
 fn test_loopback_route_to_socket_conn() {
     let mut csp = Csp::default();
     csp.add_interface("loopback");
 
     // send packet on buffer (enqueue on global qfifo)
-    let mut packet = Packet::new(256, test_buffer());
+    let mut packet = Packet::from(256, test_buffer());
     let to_send = packet.clone();
 
     let connection = csp.connect(2, 0, 10);
+    // TODO: get assigned port out of connection
+    let destination = connection.lock().unwrap().id_in_dport();
 
-    let sent = csp.send(&connection, to_send);
+    let sent = csp.sendto(2, 0, destination, 10, to_send);
 
     // make sure packet was actually sent
     assert_eq!(true, sent.is_ok());
@@ -89,9 +62,9 @@ fn test_loopback_route_to_socket_conn() {
 
     let rec = connection.lock().unwrap().read().unwrap();
 
-    assert_eq!(packet, rec)
+    assert_eq!(packet.data(), rec.data())
 }
-//
+
 // #[test]
 // fn test_udp_rec() {
 //     let mut csp = Csp::default();
@@ -138,24 +111,21 @@ fn test_loopback_route_to_socket_conn() {
 //     sender_thread.join().unwrap();
 // }
 //
-// #[test]
-// fn test_udp_send() {
-//     let mut csp = Csp::default();
-//     csp.add_interface("udp 8090 35535");
-//
-//     let socket = UdpSocket::bind(("127.0.0.1", 35535)).unwrap();
-//     Csp::send_direct(
-//         Arc::clone(csp.interfaces.get(0).unwrap()),
-//         CspPacket::new(256, utils::test_buffer(), CspId::default()),
-//     );
-//
-//     let mut buf = [0; 256];
-//     let len = socket.recv(&mut buf).unwrap();
-//
-//     let rec = CspPacket::new(len, buf, CspId::default());
-//     let packet = CspPacket::new(256, utils::test_buffer(), CspId::default());
-//     assert_eq!(packet, rec);
-// }
+
+#[test]
+fn test_udp_send() {
+    let mut csp = Csp::default();
+    csp.add_interface("udp 8090 35535");
+
+    let udp_socket = UdpSocket::bind(("127.0.0.1", 35535)).unwrap();
+
+    let send_packet = Packet::from(256, utils::test_buffer());
+    let _ = csp.sendto(2, 0, 0, 0,  send_packet.clone());
+    let mut buf = [0; 256];
+    let len = udp_socket.recv(&mut buf).unwrap();
+    let received_packet = Packet::from(len, buf);
+    assert_eq!(send_packet.data(), received_packet.data());
+}
 
 /* #[test]
 fn test_udp() {

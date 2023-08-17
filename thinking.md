@@ -6,27 +6,15 @@ socket->dest_socket and socket->rx_queue[n] when it's a connection is a bidirect
 
 Currently, socket has a spot for one single connections. We can't currently queue connections into sockets. 
 
+## TODO 
+-[ ] *listen on all ports*
+-[ ] connections are just getting made over and over
+-[ ] csp_mutex (as a trait, wrapped around std Mutex or whatever Mutex), with timeout parameter
+-[ ] connection queue on a socket
+    - listen -> connection socket
+    - read -> packet socket
+-[x] connections need to have an sport_outgoing, possibly?
+-[x] implement csp_sendto
+-[ ] what is closing a connection supposed to do?
+-[ ] are connections just getting added? What data structures? -> switch to arrays
 
-## Packet ID's
-
-On csp connect: 
-```c
-conn {
-    incoming_id {
-        src: 0, src_port: dport_parameter, 
-        dest: 0, dport: 0
-    }
-    outgoing_id {
-        src: 0, src_port: 0, 
-        dest: 0, dport: dport_parameter,
-    }
-}
-```
-Then: 
-```c
-incoming_id.dport = sport_outgoing;
-outgoing_id.sport = sport_outgoing;
-```
-`sport_outgoing` is set in `csp_conn_init()` for each connection.
-
-Packet IDs are NOT SET at all until the send step, ie not set by user. 

@@ -33,7 +33,11 @@ pub struct Packet {
 }
 
 impl Packet {
-    pub fn new(length: usize, data: [u8; 256]) -> Self {
+    /**
+    * Constructs a packet from a buffer. Intended to be used to construct a packet from a received
+    * buffer. 
+    */
+    pub fn from(length: usize, data: [u8; 256]) -> Self {
         let mut header: [u8; 8]= [0; 8];
         header[2..].copy_from_slice(&data[0..6]);
 
@@ -46,6 +50,10 @@ impl Packet {
             data: data[6..length as usize].to_owned(),
         }
     }
+
+    // pub fn new(data: Vec<u8>) -> Self {
+    //
+    // }
 
     pub fn len(&self) -> u16 {
         self.length

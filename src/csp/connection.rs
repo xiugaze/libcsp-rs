@@ -30,6 +30,7 @@ pub struct Connection {
     id_out: CspId,
     id_in: CspId,
     dest_socket: Option<Arc<Mutex<Socket>>>,
+    sport_outgoing: u8,
 }
 
 impl Connection {
@@ -40,7 +41,8 @@ impl Connection {
             rx_queue: VecDeque::new(),
             id_out: did,
             id_in: sid,
-            dest_socket: None
+            dest_socket: None,
+            sport_outgoing: 0,
         }
     }
 
@@ -80,5 +82,9 @@ impl Connection {
             Some(socket) => Some(Arc::clone(&socket)),
             None => None,
         }
+    }
+
+    pub fn dport(&self) -> u8 {
+        self.id_in().dport
     }
 }

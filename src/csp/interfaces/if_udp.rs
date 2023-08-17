@@ -58,10 +58,10 @@ impl UdpInterface {
             loop {
                 let mut buf: [u8; 256] = [0; 256];
                 let (len, src_addr) = clone.socket.recv_from(&mut buf).unwrap();
-                println!("Message from {src_addr}: ");
-                utils::dump_buffer(&buf, len);
+                // println!("Message from {src_addr}: ");
+                // utils::dump_buffer(&buf, len);
 
-                let packet = Packet::new(len, buf);
+                let packet = Packet::from(len, buf);
                 udp_state.push_qfifo(packet, Arc::clone(&clone));
             }
         }));
