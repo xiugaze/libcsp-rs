@@ -49,9 +49,9 @@ fn test_loopback_route_to_socket_conn() {
     let mut packet = Packet::from(256, test_buffer());
     let to_send = packet.clone();
 
-    let connection = csp.connect(2, 0, 10);
+    let connection = csp.connect(2, 0, 10).unwrap();
     // TODO: get assigned port out of connection
-    let destination = connection.lock().unwrap().id_in_dport();
+    let destination = connection.lock().unwrap().dport();
 
     let sent = csp.sendto(2, 0, destination, 10, to_send);
 
@@ -143,4 +143,13 @@ fn test_udp_rec_send() {
     // nexthop
     // rec on other socket
     // compare
+}
+
+fn test_connection_pool() {
+    let mut csp = Csp::default();
+    let first = csp.connect(0, 0, 0).unwrap();
+    let second = csp.connect(0, 0, 0).unwrap();
+    assert_eq!(0, first.lock().unwrap().dport());
+    assert_eq!(1, second.lock().unwrap().dport());
+
 }

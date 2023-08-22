@@ -7,7 +7,8 @@ socket->dest_socket and socket->rx_queue[n] when it's a connection is a bidirect
 Currently, socket has a spot for one single connections. We can't currently queue connections into sockets. 
 
 ## TODO 
--[ ] *listen on all ports*
+-[ ] *listen on all ports*: needed for service handler
+-[ ] are connections just getting added? What data structures? -> switch to arrays
 -[ ] connections are just getting made over and over
 -[ ] csp_mutex (as a trait, wrapped around std Mutex or whatever Mutex), with timeout parameter
 -[ ] connection queue on a socket
@@ -16,5 +17,4 @@ Currently, socket has a spot for one single connections. We can't currently queu
 -[x] connections need to have an sport_outgoing, possibly?
 -[x] implement csp_sendto
 -[ ] what is closing a connection supposed to do?
--[ ] are connections just getting added? What data structures? -> switch to arrays
 

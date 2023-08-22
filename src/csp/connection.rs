@@ -33,11 +33,25 @@ pub struct Connection {
     sport_outgoing: u8,
 }
 
+impl Default for Connection {
+    fn default() -> Self {
+        Self {
+            conn_type: ConnectionType::Client,
+            conn_state: ConnectionState::Closed,
+            rx_queue: VecDeque::new(),
+            id_out: CspId::default(),
+            id_in: CspId::default(),
+            dest_socket: None,
+            sport_outgoing: 0,
+        }
+    }
+}
+
 impl Connection {
-    pub fn new(sid: CspId, did: CspId, status: ConnectionType) -> Self {
+    pub fn new(sid: CspId, did: CspId, status: ConnectionType, sport_outgoing: u8) -> Self {
         Connection {
             conn_type: status,
-            conn_state: ConnectionState::Open,
+            conn_state: ConnectionState::Closed,
             rx_queue: VecDeque::new(),
             id_out: did,
             id_in: sid,
@@ -51,6 +65,11 @@ impl Connection {
     }
     pub fn id_in(&self) -> &CspId {
         &self.id_in
+    }
+
+    pub fn set_ids(&mut self, id_in: CspId, id_out: CspId) {
+        self.id_in = id_in;
+        self.id_out = id_out;
     }
 
     pub fn conn_type(&self) -> ConnectionType {
@@ -72,6 +91,9 @@ impl Connection {
     pub fn close(&mut self) {
         self.conn_state = ConnectionState::Closed;
     }
+    pub fn open(&mut self) {
+        self.conn_state = ConnectionState::Open;
+    }
 
     pub fn set_destination_socket(&mut self, socket: &Arc<Mutex<Socket>>) {
         self.dest_socket = Some(Arc::clone(socket));
@@ -86,5 +108,13 @@ impl Connection {
 
     pub fn dport(&self) -> u8 {
         self.id_in().dport
+    }
+
+    pub fn into_server(&mut self) {
+        self.conn_type = ConnectionType::Server;
+    }
+
+    pub fn into_client(&mut self) {
+        self.conn_type = ConnectionType::Client;
     }
 }

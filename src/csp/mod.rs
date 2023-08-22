@@ -188,7 +188,7 @@ impl Csp {
         self.router.bind(socket, port)
     }
 
-    pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> Arc<Mutex<Connection>> {
+    pub fn connect(&mut self, priority: u8, destination: u16, destination_port: u8) -> CspResult<Arc<Mutex<Connection>>> {
         self.router.connect(priority, destination, destination_port)
     }
 

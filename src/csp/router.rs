@@ -31,7 +31,7 @@ use super::{Csp, CspId};
 pub struct Router {
     qfifo: Arc<Mutex<CspQfifo>>,
     ports: Vec<Port>,
-    connections: Vec<Arc<Mutex<Connection>>>,
+    connections: [Arc<Mutex<Connection>>; 16],
 }
 
 impl Router {
@@ -43,7 +43,7 @@ impl Router {
         let mut router = Router {
             qfifo,
             ports,
-            connections: Vec::new(),
+            connections: Router::populate_connections(),
         };
         router
     }
@@ -57,6 +57,30 @@ impl Router {
         } else {
             return Err(CspError::InvalidPort);
         }
+    }
+
+    fn populate_connections() -> [Arc<Mutex<Connection>>; 16] {
+        let mut connections: [Arc<Mutex<Connection>>; 16] = [Arc::new(Mutex::new(Connection::new(
+            CspId::default(),
+            CspId::default(),
+            ConnectionType::Client,
+            0,
+        ))); 16];
+        for i in 0..16 {
+            let sid = CspId {
+                dport: i,
+                ..CspId::default()
+            };
+
+            let did = CspId {
+                sport: i,
+                ..CspId::default()
+            };
+
+            let conn = Connection::new(sid, did, ConnectionType::Client, i);
+            connections[i as usize] = Arc::new(Mutex::new(conn));
+        }
+        connections
     }
 
     // pub fn port_get_socket(&self, port: u8) -> Option<&Socket> {
@@ -126,8 +150,8 @@ impl Router {
         /* Find an existing connection */
         let connection: Arc<Mutex<Connection>> = match self.find_existing(packet.id()) {
             Some(conn) => conn,
-            /* Accept a new incoming connection */
             None => {
+                /* Accept a new incoming connection */
                 // security check
                 Router::route_security_check();
                 let sid = packet.id();
@@ -140,16 +164,20 @@ impl Router {
                     sport: sid.dport,
                 };
 
-                let conn = Arc::new(Mutex::new(Connection::new(
-                    sid.clone(),
-                    did,
-                    ConnectionType::Server,
-                )));
-                self.connections.push(Arc::clone(&conn));
-                conn
+                // TODO: Should be replaced by connect?
+                // This is a closed connection, not going to work
+                if let Some((i, conn)) = self.find_connection() {
+                    {
+                        let mut conn = conn.lock().unwrap();
+                        conn.into_server();
+                        conn.set_ids(sid.clone(), did);
+                    }
+                    Arc::clone(&conn)
+                } else {
+                    return Err(CspError::ClosedConnection);
+                }
             }
         };
-        println!("got here");
 
         // Try to queue the packet into the connection
         connection.lock().unwrap().push(packet);
@@ -191,7 +219,7 @@ impl Router {
         priority: u8,
         destination: u16,
         destination_port: u8,
-    ) -> Arc<Mutex<Connection>> {
+    ) -> CspResult<Arc<Mutex<Connection>>> {
         let mut incoming_id = CspId {
             priority,            // same priority
             flags: 0,            // no flags
@@ -211,17 +239,39 @@ impl Router {
         };
 
         let sport_outgoing: u8 = self.connections.len() as u8 + 16 + 1;
+
         outgoing_id.sport = sport_outgoing;
         incoming_id.dport = sport_outgoing;
 
-        let conn = Arc::new(Mutex::new(Connection::new(
-            incoming_id,
-            outgoing_id,
-            ConnectionType::Client,
-        )));
+        if let Some((sport_outgoing, conn)) = self.find_connection() {
+            {
+                let mut conn = conn.lock().unwrap();
+                conn.open();
+                conn.set_ids(incoming_id, outgoing_id);
+            }
+            Ok(Arc::clone(&conn))
+        } else {
+            Err(CspError::ClosedConnection)
+        }
 
-        self.connections.push(Arc::clone(&conn));
-        conn
+        // let conn = Arc::new(Mutex::new(Connection::new(
+        //     incoming_id,
+        //     outgoing_id,
+        //     ConnectionType::Client,
+        //     sport_outgoing,
+        // )));
+
+        // self.connections.push(Arc::clone(&conn));
+    }
+
+    fn find_connection(&self) -> Option<(usize, Arc<Mutex<Connection>>)> {
+        for (i, conn) in self.connections.iter().enumerate() {
+            match conn.lock().unwrap().conn_state() {
+                ConnectionState::Closed => return Some((i, Arc::clone(&conn))),
+                ConnectionState::Open => continue,
+            }
+        }
+        None
     }
 
     // TODO: Implement
