@@ -1,5 +1,6 @@
 use std::cmp;
 use std::collections::VecDeque;
+use std::mem::MaybeUninit;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
@@ -60,13 +61,31 @@ impl Router {
     }
 
     fn populate_connections() -> [Arc<Mutex<Connection>>; 16] {
-        let mut connections: [Arc<Mutex<Connection>>; 16] = [Arc::new(Mutex::new(Connection::new(
-            CspId::default(),
-            CspId::default(),
-            ConnectionType::Client,
-            0,
-        ))); 16];
-        for i in 0..16 {
+
+        let connections = {
+            // Create an array of uninitialized values.
+            let mut array: [MaybeUninit<Arc<Mutex<Connection>>>; 16] = unsafe { MaybeUninit::uninit().assume_init() };
+
+            for (i, element) in array.iter_mut().enumerate() {
+
+                let sid = CspId {
+                    dport: i as u8,
+                    ..CspId::default()
+                };
+
+                let did = CspId {
+                    sport: i,
+                    ..CspId::default()
+                };
+                let conn = Foo { a: i as u32, b: 0 };
+                *element = MaybeUninit::new(foo);
+            }
+
+            unsafe { std::mem::transmute::<_, [Foo; 10]>(array) }
+        };
+        let mut connections: [MaybeUninit<Arc<Mutex<Connection>>>; 16] = unsafe { MaybeUninit::uninit().assume_init() };
+
+        for (i, conn) in connections.iter_mut().enumerate() {
             let sid = CspId {
                 dport: i,
                 ..CspId::default()
@@ -77,8 +96,7 @@ impl Router {
                 ..CspId::default()
             };
 
-            let conn = Connection::new(sid, did, ConnectionType::Client, i);
-            connections[i as usize] = Arc::new(Mutex::new(conn));
+            *conn = Arc::new(Mutex::new(Connection::new(sid, did, ConnectionType::Client, i as u8)));
         }
         connections
     }
