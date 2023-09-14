@@ -28,19 +28,18 @@ use super::{Csp, CspId};
    specified in the CSP header, otherwise the packet will be sent the to the route's via address.
 */
 
+const PORT_ANY: u8 = 16;
+
 #[derive(Default)]
 pub struct Router {
     qfifo: Arc<Mutex<CspQfifo>>,
-    ports: Vec<Port>,
+    ports: [Port; 16 + 1],
     connections: [Arc<Mutex<Connection>>; 16],
 }
 
 impl Router {
     pub fn new(qfifo: Arc<Mutex<CspQfifo>>) -> Self {
-        let mut ports: Vec<Port> = Vec::with_capacity(16);
-        for i in 0..16 {
-            ports.push(Port::closed())
-        }
+        let mut ports: [Port; 16 + 1] = Default::default();
         let mut router = Router {
             qfifo,
             ports,
@@ -50,8 +49,18 @@ impl Router {
     }
 
     pub fn bind(&mut self, socket: &Arc<Mutex<Socket>>, index: u8) -> CspResult<usize> {
-        if index <= 16 {
-            let port = self.ports.get_mut(index as usize).unwrap();
+
+        /* 
+        * TODO: These first two cases are identical. What should be different when
+        * binding to all ports?
+        */
+        if index == PORT_ANY {
+            let port = &mut self.ports[PORT_ANY as usize];
+            port.open();
+            port.bind(socket);
+            Ok(PORT_ANY as usize)
+        } else if index <= 16 {
+            let port = &mut self.ports[index as usize];
             port.open();
             port.bind(socket);
             Ok(index as usize)
@@ -60,53 +69,31 @@ impl Router {
         }
     }
 
+    /**
+    * Returns an array of closed connections. Should only be called once 
+    * by the router. 
+    */
     fn populate_connections() -> [Arc<Mutex<Connection>>; 16] {
 
-        let connections = {
-            // Create an array of uninitialized values.
-            let mut array: [MaybeUninit<Arc<Mutex<Connection>>>; 16] = unsafe { MaybeUninit::uninit().assume_init() };
+        // Create an array of uninitialized values.
+        let mut connections: [Arc<Mutex<Connection>>; 16] = Default::default();
 
-            for (i, element) in array.iter_mut().enumerate() {
+        for (i, element) in connections.iter_mut().enumerate() {
 
-                let sid = CspId {
-                    dport: i as u8,
-                    ..CspId::default()
-                };
-
-                let did = CspId {
-                    sport: i,
-                    ..CspId::default()
-                };
-                let conn = Foo { a: i as u32, b: 0 };
-                *element = MaybeUninit::new(foo);
-            }
-
-            unsafe { std::mem::transmute::<_, [Foo; 10]>(array) }
-        };
-        let mut connections: [MaybeUninit<Arc<Mutex<Connection>>>; 16] = unsafe { MaybeUninit::uninit().assume_init() };
-
-        for (i, conn) in connections.iter_mut().enumerate() {
             let sid = CspId {
-                dport: i,
+                dport: i as u8,
                 ..CspId::default()
             };
 
             let did = CspId {
-                sport: i,
+                sport: i as u8,
                 ..CspId::default()
             };
-
-            *conn = Arc::new(Mutex::new(Connection::new(sid, did, ConnectionType::Client, i as u8)));
+            let conn = Connection::new(sid, did, ConnectionType::Client, 0);
+            *element = Arc::new(Mutex::new(conn));
         }
         connections
     }
-
-    // pub fn port_get_socket(&self, port: u8) -> Option<&Socket> {
-    //     if port <= 16 && self.ports[port as usize].lock().unwrap().is_open() {
-    //         return Some(&self.ports[port as usize].lock().unwrap().socket)
-    //     }
-    //     None
-    // }
 
     // TODO: Fix error types/Ok("message")?
     /**
@@ -145,25 +132,27 @@ impl Router {
             } return``
         */
 
-        // TODO: Make this better
-        // let something =
-
-        let socket: Option<Arc<Mutex<Socket>>> =
-            match self.ports.get_mut(packet.id().dport as usize) {
-                Some(port) => match port.socket() {
-                    Some(socket) => {
-                        // TODO: Match and throw to caller
-                        let mut lock = socket.try_lock().expect("Error: Failed to lock thread");
-                        if lock.is_conn_less() {
-                            lock.push(packet);
-                            return Ok(());
+        let socket: Option<Arc<Mutex<Socket>>> = {
+            if self.ports[PORT_ANY as usize].is_open() {
+                self.ports[PORT_ANY as usize].socket()
+            } else {
+                match self.ports.get_mut(packet.id().dport as usize) { Some(port) => match port.socket() {
+                        Some(socket) => {
+                            // TODO: Match and throw to caller
+                            let mut lock = socket.try_lock().expect("Error: Failed to lock thread");
+                            if lock.is_conn_less() {
+                                lock.push(packet);
+                                return Ok(());
+                            }
+                            Some(Arc::clone(&socket))
                         }
-                        Some(Arc::clone(&socket))
-                    }
+                        None => None,
+                    },
                     None => None,
-                },
-                None => None,
-            };
+                }
+            }
+        };
+
 
         /* Find an existing connection */
         let connection: Arc<Mutex<Connection>> = match self.find_existing(packet.id()) {
@@ -229,9 +218,9 @@ impl Router {
     }
 
     /**
-        Initializes a connection and adds it to the connection pool (inside router struct).
-        Returns an Arc<Mutex<CspConnection>> pointing to the connection in the pool.
+    * Finds an available connection and initializes it, returning a pointer to it.
     */
+    // TODO: should populate a connection in the connection pool
     pub fn connect(
         &mut self,
         priority: u8,
@@ -271,17 +260,11 @@ impl Router {
         } else {
             Err(CspError::ClosedConnection)
         }
-
-        // let conn = Arc::new(Mutex::new(Connection::new(
-        //     incoming_id,
-        //     outgoing_id,
-        //     ConnectionType::Client,
-        //     sport_outgoing,
-        // )));
-
-        // self.connections.push(Arc::clone(&conn));
     }
 
+    /**
+    * Finds an available connection in the connection pool
+    */
     fn find_connection(&self) -> Option<(usize, Arc<Mutex<Connection>>)> {
         for (i, conn) in self.connections.iter().enumerate() {
             match conn.lock().unwrap().conn_state() {

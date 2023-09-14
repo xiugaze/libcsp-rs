@@ -2,7 +2,9 @@ use std::{collections::VecDeque, sync::{Mutex, Arc}};
 
 use super::{types::Packet, connection::Connection};
 
+#[derive(Default)]
 pub enum PortState {
+    #[default]
     Closed,
     Open,
     // Callback,
@@ -11,6 +13,7 @@ pub enum PortState {
 /**
     This port type is equivalent to a bound socket in the original implementation.
 */
+#[derive(Default)]
 pub struct Port {
     pub state: PortState,
     // TODO: Should socket be owned by the port?
