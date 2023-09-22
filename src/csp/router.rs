@@ -28,7 +28,7 @@ use super::{Csp, CspId};
    specified in the CSP header, otherwise the packet will be sent the to the route's via address.
 */
 
-const PORT_ANY: u8 = 16;
+pub const PORT_ANY: u8 = 16;
 
 #[derive(Default)]
 pub struct Router {

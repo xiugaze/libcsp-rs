@@ -2,6 +2,7 @@ use crate::csp::{types::CspError, utils::test_buffer};
 
 #[cfg(test)]
 use super::*;
+use super::router::PORT_ANY;
 use crate::{
     csp::{self, types, utils, CspId, Packet, CspResult, Socket},
     Csp,
@@ -65,53 +66,6 @@ fn test_loopback_route_to_socket_conn() {
     assert_eq!(packet.data(), rec.data())
 }
 
-// #[test]
-// fn test_udp_rec() {
-//     let mut csp = Csp::default();
-//
-//     // RX thread starts here
-//     // interface lport rport
-//     csp.add_interface("udp 8080 0");
-//
-//     // server CSP port (conn_less = false)
-//     let socket = CspSocket::conn();
-//     let _ = csp.bind(socket);
-//
-//     // buffer for packet and UDP send
-//     let buffer = utils::test_buffer();
-//     let packet = CspPacket::new(256, buffer, CspId::default());
-//
-//     // send packet as [u8; 256]
-//     // HACK: "race condition" occurs on route_work() before UDP thread is done
-//     let mut sent: Result<(), CspError> = CspResult::Err(types::CspError::EmptyQfifo);
-//
-//     let sender_thread = thread::spawn(move || {
-//         let client = UdpSocket::bind(("127.0.0.1", 0)).expect("Error: Could not bind to address");
-//
-//         client.send_to(&buffer, ("127.0.0.1", 8080)).unwrap();
-//     });
-//
-//     loop {
-//         let Ok(_sent) = csp.route_work() else {
-//             continue;
-//         };
-//
-//         let rec = csp
-//             .router
-//             .get_connection_pool()
-//             .get_mut(0)
-//             .unwrap()
-//             .pop()
-//             .unwrap();
-//
-//         assert_eq!(packet, rec);
-//         break;
-//     }
-//
-//     sender_thread.join().unwrap();
-// }
-//
-
 #[test]
 fn test_udp_send() {
     let mut csp = Csp::default();
@@ -153,3 +107,30 @@ fn test_connection_pool() {
     assert_eq!(1, second.lock().unwrap().dport());
 
 }
+
+// fn test_service_handler() {
+//     let mut csp = Csp::default();
+//     csp.add_interface("udp 8080 8091");
+
+//     let server_port = 10;
+//     let socket = Socket::conn();
+//     csp.bind(&socket, PORT_ANY);
+
+//     let udp_socket = UdpSocket::bind(("127.0.0.1", 8091)).unwrap();
+
+//     let id = CspId {
+//         priority: 2,
+//         flags: 0x0,
+//         source: 0,
+//         destination: 0,
+//         dport: 10,
+//         sport: 18,
+//     };
+
+//     let packet = Packet::default();
+
+//     udp_socket.send_to(, "127.0.0.1:8080")
+
+    
+
+// }

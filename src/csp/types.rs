@@ -58,6 +58,7 @@ impl Packet {
     pub fn len(&self) -> u16 {
         self.length
     }
+
     pub fn make_buffer(self) -> Vec<u8> {
         let mut header = self.header.to_vec();
         let mut data = self.data;

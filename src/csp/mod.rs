@@ -209,7 +209,7 @@ impl Csp {
         match Csp::check_service_port(packet.id().dport) {
             ServicePort::Port(_) => todo!(),
             ServicePort::Compare => todo!(),
-            ServicePort::Ping => {let _ = self.echo(packet);},
+            ServicePort::Ping => { let _ = self.echo(packet); },
             ServicePort::Reboot => println!("Reboot request received"),
             ServicePort::Uptime => todo!(),
         }
